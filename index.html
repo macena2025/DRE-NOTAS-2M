@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>2M | Notas + DRE — HTML Único (Revisado)</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#0f1a2e;
+    --card:#0f223d;
+    --card2:#102a4b;
+    --text:#e8eefc;
+    --muted:#9bb0d3;
+    --line:rgba(255,255,255,.10);
+    --brand:#22c55e;
+    --brand2:#10b981;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --ok:#22c55e;
+    --shadow: 0 12px 40px rgba(0,0,0,.45);
+    --radius: 16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    background: radial-gradient(1200px 700px at 20% 10%, rgba(34,197,94,.18), transparent 55%),
+                radial-gradient(900px 600px at 90% 15%, rgba(16,185,129,.12), transparent 55%),
+                linear-gradient(180deg, var(--bg), #070b14);
+    color:var(--text);
+  }
+  .app{display:grid; grid-template-columns:280px 1fr; min-height:100vh;}
+  @media (max-width:1100px){ .app{grid-template-columns:1fr} }
+
+  /* Sidebar */
+  .sidebar{
+    padding:18px;
+    border-right:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(15,26,46,.92), rgba(11,18,32,.92));
+    position:sticky; top:0; height:100vh; overflow:auto;
+  }
+  @media (max-width:1100px){ .sidebar{position:relative; height:auto;} }
+
+  .brand{display:flex; gap:12px; align-items:center; padding:10px 10px 14px 10px; border-bottom:1px solid var(--line); margin-bottom:14px;}
+  .logo{width:40px; height:40px; border-radius:12px; background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(16,185,129,.75));
+        box-shadow:0 10px 30px rgba(34,197,94,.18); display:grid; place-items:center; font-weight:900; color:#062013;}
+  .brand h1{font-size:14px; margin:0}
+  .brand p{margin:2px 0 0 0; font-size:12px; color:var(--muted)}
+
+  .nav{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
+  .nav button{
+    text-align:left;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.03);
+    color:var(--text);
+    padding:12px 12px;
+    border-radius:14px;
+    cursor:pointer;
+    transition:.15s ease;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .nav button:hover{transform: translateY(-1px); background: rgba(255,255,255,.05)}
+  .nav button.active{border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.10)}
+  .pill{font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background: rgba(255,255,255,.03);}
+  .help{margin-top:18px; padding:12px; border:1px dashed rgba(255,255,255,.14); border-radius:14px; color:var(--muted); font-size:12px; line-height:1.35;}
+  .help b{color:var(--text)}
+
+  /* Main */
+  .main{padding:22px;}
+  .topbar{display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
+  .title h2{margin:0; font-size:20px}
+  .title p{margin:6px 0 0 0; color:var(--muted); font-size:13px}
+
+  .filtersTop{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:end;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.03);
+    padding:12px;
+    border-radius:16px;
+  }
+
+  .btn{
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.04);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:14px;
+    cursor:pointer;
+    transition:.15s ease;
+    display:inline-flex; gap:10px; align-items:center;
+    user-select:none;
+  }
+  .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
+  .btn.primary{border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14)}
+  .btn:active{transform: translateY(0px)}
+  .btn.small{padding:7px 10px; border-radius:12px; font-size:12px}
+
+  .grid{display:grid; grid-template-columns:1.2fr .8fr; gap:16px;}
+  @media (max-width:1100px){ .grid{grid-template-columns:1fr} }
+
+  .card{
+    background: linear-gradient(180deg, rgba(16,42,75,.70), rgba(15,34,61,.70));
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding:16px;
+  }
+  .card h3{margin:0 0 10px 0; font-size:15px}
+  .muted{color:var(--muted)}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
+  input, select, textarea{
+    width:100%;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.03);
+    color:var(--text);
+    outline:none;
+  }
+  textarea{min-height:86px; resize:vertical}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media (max-width:700px){ .row{grid-template-columns:1fr} }
+
+  .hint{font-size:12px; color:rgba(155,176,211,.85); margin-top:8px; line-height:1.35}
+  .footerNote{margin-top:12px; font-size:12px; color:var(--muted); line-height:1.35}
+  .sep{height:1px; background: rgba(255,255,255,.10); margin:12px 0}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:12px;}
+  @media (max-width:950px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:520px){ .kpis{grid-template-columns:1fr} }
+  .kpi{padding:12px; border-radius:16px; border:1px solid var(--line); background: rgba(255,255,255,.03);}
+  .kpi .n{font-size:18px; font-weight:750; margin-top:6px}
+  .kpi .l{font-size:12px; color:var(--muted)}
+  .kpi .t{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .chip{font-size:12px; padding:4px 9px; border-radius:999px; border:1px solid var(--line); background: rgba(255,255,255,.03); color:var(--muted);}
+
+  .tableWrap{margin-top:12px; overflow:auto; border-radius:16px; border:1px solid var(--line);}
+  table{width:100%; border-collapse:collapse; min-width: 920px; background: rgba(0,0,0,.10);}
+  th, td{padding:12px; border-bottom:1px solid rgba(255,255,255,.08); font-size:13px; vertical-align:top;}
+  th{text-align:left; color:#cfe0ff; font-weight:650; background: rgba(255,255,255,.03); position:sticky; top:0; z-index:1;}
+  td .mini{font-size:12px; color:var(--muted); margin-top:4px}
+  .tdActions{display:flex; gap:8px; flex-wrap:wrap}
+  .statusSel{min-width:150px}
+
+  .badge{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12px;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,.03);
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .dot{width:8px; height:8px; border-radius:999px; background: rgba(155,176,211,.7)}
+  .badge.ok{border-color: rgba(34,197,94,.45); color:#b8f7cf; background: rgba(34,197,94,.10)}
+  .badge.ok .dot{background: var(--ok)}
+  .badge.warn{border-color: rgba(245,158,11,.45); color:#ffe2b2; background: rgba(245,158,11,.10)}
+  .badge.warn .dot{background: var(--warn)}
+  .badge.bad{border-color: rgba(239,68,68,.45); color:#ffd0d0; background: rgba(239,68,68,.08)}
+  .badge.bad .dot{background: var(--bad)}
+
+  /* Modal */
+  .modalOverlay{position:fixed; inset:0; background: rgba(0,0,0,.62); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal{width:min(980px, 100%); border-radius:22px; border:1px solid rgba(255,255,255,.16); background: linear-gradient(180deg, rgba(15,26,46,.98), rgba(9,14,24,.98));
+         box-shadow: 0 28px 80px rgba(0,0,0,.6); overflow:hidden;}
+  .modalHeader{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.10);}
+  .modalHeader h4{margin:0; font-size:15px}
+  .modalHeader p{margin:6px 0 0 0; font-size:12px; color:var(--muted)}
+  .modalBody{padding:16px; display:grid; grid-template-columns: 1.1fr .9fr; gap:14px;}
+  @media (max-width:900px){ .modalBody{grid-template-columns:1fr} }
+  .kv{border:1px solid rgba(255,255,255,.10); border-radius:16px; background: rgba(255,255,255,.03); padding:12px;}
+  .kv .k{font-size:12px; color:var(--muted)}
+  .kv .v{margin-top:6px; font-size:13px}
+  .preview{border:1px solid rgba(255,255,255,.10); border-radius:16px; background: rgba(255,255,255,.03); padding:12px; overflow:auto; max-height: 420px;}
+  .preview img{max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.10)}
+  .modalFooter{padding:14px 16px; border-top:1px solid rgba(255,255,255,.10); display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  canvas{width:100%; height:240px; display:block}
+
+  .toast{position:fixed; right:16px; bottom:16px; background: rgba(15,26,46,.92); border:1px solid rgba(255,255,255,.14);
+         border-radius:16px; box-shadow: var(--shadow); padding:12px 14px; color:var(--text); max-width: 360px; display:none; z-index:60;}
+  .toast .t{font-weight:700; font-size:13px}
+  .toast .m{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.35}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        
+        
+      </div>
+    </div>
+
+    <div class="nav">
+      <button id="nav-cadastro" class="active" data-view="cadastro">
+        <span>➕ Cadastro / Upload de Nota</span>
+        <span class="pill">Tela 1</span>
+      </button>
+      <button id="nav-notas" data-view="notas">
+        <span>📄 Lançamentos (Notas)</span>
+        <span class="pill">Tela 2</span>
+      </button>
+      <button id="nav-dre" data-view="dre">
+        <span>📊 DRE (Dashboard)</span>
+        <span class="pill">Tela 3</span>
+      </button>
+
+      <button id="nav-documentos" data-view="documentos">
+        <span>📁 Documentos (Pastas)</span>
+        <span class="pill">Tela 4</span>
+      </button>
+    </div>
+
+    
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <h2 id="pageTitle">Cadastro / Upload de Nota</h2>
+        <p id="pageSub">Anexe a nota e lance no financeiro. (Revisado)</p>
+      </div>
+
+      <!-- TOP FILTERS (substitui botões antigos) -->
+      <div class="filtersTop">
+        <div style="min-width:160px">
+          <label>Período inicial</label>
+          <input type="month" id="filtro_inicio" onchange="App.renderAll()"/>
+        </div>
+        <div style="min-width:160px">
+          <label>Período final</label>
+          <input type="month" id="filtro_fim" onchange="App.renderAll()"/>
+        </div>
+        <div style="min-width:220px">
+          <label>Receita mensal manual (R$)</label>
+          <input id="receita_manual" placeholder="Ex: 150000,00" oninput="App.renderAll()"/>
+        </div>
+        <button class="btn primary" onclick="App.exportCNAB()">
+          ⬇️ Exportar CNAB Contábil
+        </button>
+      </div>
+    </div>
+
+    <!-- Tela: Cadastro -->
+    <section id="view-cadastro" class="grid">
+      <div class="card">
+        <h3>Nova Nota / Lançamento</h3>
+        <div class="row">
+          <div>
+            <label>Tipo</label>
+            <select id="f_tipo">
+              <option value="DESPESA" selected>Despesa</option>
+              <option value="RECEITA">Receita</option>
+            </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="f_status">
+              <option value="PENDENTE" selected>Pendente</option>
+              <option value="LANCADA">Lançada</option>
+              <option value="PAGA">Paga</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Fornecedor / Colaborador (PJ)</label>
+            <input id="f_nome" placeholder="Ex: Fulano Serviços LTDA"/>
+          </div>
+          <div>
+            <label>CNPJ/CPF (opcional)</label>
+            <input id="f_doc" placeholder="00.000.000/0000-00"/>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Categoria DRE</label>
+            <select id="f_categoria">
+              <option value="RECEITA_OPERACIONAL">Receita Operacional</option>
+              <option value="RECEITA_FINANCEIRA">Receita Financeira</option>
+              <option value="CUSTOS_PROCESSAMENTO">Custos de Processamento</option>
+              <option value="DESPESAS_OPERACIONAIS" selected>Despesas Operacionais</option>
+              <option value="DESPESAS_ADM">Despesas Administrativas</option>
+              <option value="DESPESAS_PESSOAL">Despesas com Pessoal</option>
+              <option value="IMPOSTOS">Impostos</option>
+              <option value="OUTROS">Outros</option>
+            </select>
+          </div>
+          <div>
+            <label>Centro de Custo (opcional)</label>
+            <input id="f_cc" placeholder="Ex: TI, Operações, Comercial"/>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Competência (mês/ano)</label>
+            <input id="f_competencia" type="month"/>
+          </div>
+          <div>
+            <label>Vencimento</label>
+            <input id="f_venc" type="date"/>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Valor (R$)</label>
+            <input id="f_valor" inputmode="decimal" placeholder="Ex: 1250,90"/>
+          </div>
+          <div>
+            <label>Número da Nota (opcional)</label>
+            <input id="f_numero" placeholder="Ex: NF-12345"/>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <label>Descrição (opcional)</label>
+          <textarea id="f_desc" placeholder="Observações do lançamento..."></textarea>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Anexo (PDF/JPG/PNG)</label>
+            <input id="f_file" type="file" accept=".pdf,.jpg,.jpeg,.png"/>
+            
+          </div>
+          <div>
+            <label>Data de Pagamento (se Status=Paga)</label>
+            <input id="f_pagoem" type="date"/>
+            
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
+          <button class="btn primary" onclick="App.addNota()">✅ Salvar Lançamento</button>
+          <button class="btn" onclick="App.clearForm()">🧹 Limpar</button>
+          <button class="btn" onclick="App.go('notas')">📄 Ir para Lançamentos</button>
+        </div>
+
+        
+      </div>
+
+      <div class="card">
+        <h3>Resumo (competência selecionada)</h3>
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Competência (mês/ano)</label>
+            <input id="cad_comp_filter" type="month" onchange="App.renderAll()"/>
+          </div>
+          <div>
+            <label>Filtrar por Status</label>
+            <select id="cad_status_filter" onchange="App.renderAll()">
+              <option value="TODOS" selected>Todos</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="LANCADA">Lançada</option>
+              <option value="PAGA">Paga</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis-cadastro"></div>
+
+        <div class="sep"></div>
+        <h3 style="margin:0 0 8px 0">Últimos Lançamentos</h3>
+        <div id="lastList" class="muted" style="font-size:13px; line-height:1.35">Carregando…</div>
+
+        
+      </div>
+    </section>
+
+    <!-- Tela: Notas -->
+    <section id="view-notas" style="display:none">
+      <div class="card">
+        <h3>Lançamentos (Notas / Receitas / Despesas)</h3>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Buscar</label>
+            <input id="q" placeholder="Fornecedor, número, descrição…" oninput="App.renderNotas()"/>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="notas_tipo" onchange="App.renderNotas()">
+              <option value="TODOS" selected>Todos</option>
+              <option value="DESPESA">Despesa</option>
+              <option value="RECEITA">Receita</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Status</label>
+            <select id="notas_status" onchange="App.renderNotas()">
+              <option value="TODOS" selected>Todos</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="LANCADA">Lançada</option>
+              <option value="PAGA">Paga</option>
+            </select>
+          </div>
+          <div>
+            <label>Competência exata (opcional)</label>
+            <input id="notas_comp" type="month" onchange="App.renderNotas()"/>
+          </div>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fornecedor / PJ</th>
+                <th>Competência</th>
+                <th>Vencimento</th>
+                <th>Tipo</th>
+                <th>Categoria DRE</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyNotas"></tbody>
+          </table>
+        </div>
+
+        <div class="footerNote">
+          <b>Detalhar</b> abre o modal com o anexo. Você pode trocar status direto na tabela ou clicar em <b>✅ Pagar</b>.
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela: DRE -->
+    <section id="view-dre" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h3>DRE — Dashboard (por período)</h3>
+          <div class="row" style="margin-top:10px">
+            <div>
+              <label>Considerar Status</label>
+              <select id="dre_status_mode" onchange="App.renderDRE()">
+                <option value="TODOS" selected>Todos</option>
+                <option value="APENAS_PAGAS">Apenas Pagas</option>
+                <option value="PAGAS_E_LANCADAS">Pagas + Lançadas</option>
+              </select>
+            </div>
+            <div>
+              <label>Modo DRE</label>
+              <select id="dre_mode" onchange="App.renderDRE()">
+                <option value="PERIODO" selected>Consolidado no período</option>
+                <option value="MENSAL">Detalhar por mês</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="kpis" id="kpis-dre"></div>
+
+          <div class="sep"></div>
+          <h3 style="margin:0 0 8px 0">Gráfico (Receitas vs Despesas)</h3>
+          <canvas id="dreChart" width="900" height="240"></canvas>
+
+          <div class="footerNote">
+            O filtro de <b>Período</b> fica no topo (Período inicial e final).<br/>
+            A <b>Receita mensal manual</b> entra como crédito adicional na consolidação do período.
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Detalhamento por Categoria</h3>
+          <div id="dreCats" class="muted" style="font-size:13px">Carregando…</div>
+          <div class="sep"></div>
+          <h3>Top lançamentos do período</h3>
+          <div id="dreTop" class="muted" style="font-size:13px; line-height:1.35">Carregando…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela: Documentos -->
+    <section id="view-documentos" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h3>Documentos — Organização por Competência</h3>
+          <div class="hint">Clique nas “pastas” para filtrar. Ex.: <b>Despesas → Pessoal → 2026-01</b>.</div>
+          <div class="sep"></div>
+          <div id="docsTree"></div>
+        </div>
+
+        <div class="card">
+          <h3 id="docsTitle">Selecione uma pasta</h3>
+          <div class="hint" id="docsSub">—</div>
+          <div class="sep"></div>
+          <div class="tableWrap">
+            <table style="min-width:920px">
+              <thead>
+                <tr>
+                  <th>Arquivo / Fornecedor</th>
+                  <th>Competência</th>
+                  <th>Categoria</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="docsTbody"></tbody>
+            </table>
+          </div>
+          
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modalOverlay" class="modalOverlay" onclick="App.modalClose(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modalHeader">
+      <div>
+        <h4 id="m_title">Detalhes</h4>
+        <p id="m_sub">—</p>
+      </div>
+      <button class="btn small" onclick="App.modalClose()">✖ Fechar</button>
+    </div>
+    <div class="modalBody">
+      <div class="kv" id="m_kv"></div>
+      <div class="preview" id="m_preview"></div>
+    </div>
+    <div class="modalFooter">
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <button class="btn small primary" onclick="App.markPaidFromModal()">✅ Marcar como Paga</button>
+        <button class="btn small" onclick="App.duplicateFromModal()">📄 Duplicar</button>
+      </div>
+      <div class="muted" style="font-size:12px" id="m_footer">—</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">
+  <div class="t" id="toastT">OK</div>
+  <div class="m" id="toastM">—</div>
+</div>
+
+<script>
+/* ============================
+   2M Notas + DRE (Revisado)
+   - HTML único
+   - localStorage persistence
+   ============================ */
+
+const App = (() => {
+  const LS_KEY = "dre_mock_v2"; // novo key para evitar conflito com versões quebradas
+  const state = { view:"cadastro", selectedId:null };
+
+  const DRE_LABELS = {
+    RECEITA_OPERACIONAL: "Receita Operacional",
+    RECEITA_FINANCEIRA: "Receita Financeira",
+    CUSTOS_PROCESSAMENTO: "Custos de Processamento",
+    DESPESAS_OPERACIONAIS: "Despesas Operacionais",
+    DESPESAS_ADM: "Despesas Administrativas",
+    DESPESAS_PESSOAL: "Despesas com Pessoal",
+    IMPOSTOS: "Impostos",
+    OUTROS: "Outros"
+  };
+
+  function nowISODate(){
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const d2 = new Date(d.getTime() - off*60*1000);
+    return d2.toISOString().slice(0,10);
+  }
+  function ymToday(){
+    const d = new Date();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    return `${d.getFullYear()}-${m}`;
+  }
+  function moneyBRL(n){
+    try{ return new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n); }
+    catch(e){ return "R$ " + (n||0).toFixed(2); }
+  }
+  function parseMoney(str){
+    if(!str) return 0;
+    const s = String(str).trim().replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");
+    const v = Number(s);
+    return isNaN(v) ? 0 : v;
+  }
+  function uid(){ return "N" + Math.random().toString(16).slice(2) + Date.now().toString(16); }
+
+  function load(){
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return { notas: [], receitaManualByMonth: {} };
+    try{
+      const obj = JSON.parse(raw);
+      if(!Array.isArray(obj.notas)) obj.notas = [];
+      if(!obj.receitaManualByMonth) obj.receitaManualByMonth = {};
+      return obj;
+    }catch(e){
+      return { notas: [], receitaManualByMonth: {} };
+    }
+  }
+  function save(db){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+  function getDB(){ return load(); }
+  function setDB(db){ save(db); }
+
+  function toast(title, msg){
+    const el = document.getElementById("toast");
+    document.getElementById("toastT").textContent = title || "OK";
+    document.getElementById("toastM").textContent = msg || "";
+    el.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=> el.style.display="none", 3200);
+  }
+
+  function go(view){
+    state.view = view;
+    ["cadastro","notas","dre","documentos"].forEach(v=>{
+      document.getElementById("nav-"+v).classList.toggle("active", v===view);
+      document.getElementById("view-"+v).style.display = (v===view) ? "" : "none";
+    });
+
+    const title = document.getElementById("pageTitle");
+    const sub = document.getElementById("pageSub");
+    if(view==="cadastro"){
+      title.textContent = "Cadastro / Upload de Nota";
+      sub.textContent = "Cadastre notas e receitas/despesas.";
+    }else if(view==="notas"){
+      title.textContent = "Lançamentos (Notas)";
+      sub.textContent = "Lista completa com detalhamento e status.";
+    }else if(view==="dre"){
+      title.textContent = "DRE (Dashboard)";
+      sub.textContent = "Consolidado por período + detalhamento por categoria.";
+    }else{
+      title.textContent = "Documentos (Pastas)";
+      sub.textContent = "Organização por Tipo → Categoria → Competência.";
+    }
+    renderAll();
+  }
+
+  function clearForm(){
+    document.getElementById("f_tipo").value = "DESPESA";
+    document.getElementById("f_status").value = "PENDENTE";
+    document.getElementById("f_nome").value = "";
+    document.getElementById("f_doc").value = "";
+    document.getElementById("f_categoria").value = "DESPESAS_OPERACIONAIS";
+    document.getElementById("f_cc").value = "";
+    document.getElementById("f_competencia").value = ymToday();
+    document.getElementById("f_venc").value = nowISODate();
+    document.getElementById("f_valor").value = "";
+    document.getElementById("f_numero").value = "";
+    document.getElementById("f_desc").value = "";
+    document.getElementById("f_file").value = "";
+    document.getElementById("f_pagoem").value = "";
+  }
+
+  async function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result);
+      r.onerror = ()=> reject(new Error("Falha ao ler arquivo"));
+      r.readAsDataURL(file);
+    });
+  }
+
+  function badgeForStatus(status){
+    if(status==="PAGA") return `<span class="badge ok"><span class="dot"></span>Paga</span>`;
+    if(status==="LANCADA") return `<span class="badge warn"><span class="dot"></span>Lançada</span>`;
+    return `<span class="badge bad"><span class="dot"></span>Pendente</span>`;
+  }
+  function statusOptions(cur){
+    const opts = [["PENDENTE","Pendente"],["LANCADA","Lançada"],["PAGA","Paga"]];
+    return opts.map(([v,l])=>`<option value="${v}" ${v===cur?"selected":""}>${l}</option>`).join("");
+  }
+  function esc(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escAttr(s){ return String(s ?? "").replace(/"/g,'&quot;'); }
+  function formatBytes(bytes){
+    if(!bytes && bytes!==0) return "—";
+    const units = ["B","KB","MB","GB"];
+    let v = bytes, i=0;
+    while(v>=1024 && i<units.length-1){ v/=1024; i++; }
+    return `${v.toFixed(i?1:0)} ${units[i]}`;
+  }
+
+  function getPeriod(){
+    const ini = document.getElementById("filtro_inicio").value || ymToday();
+    const fim = document.getElementById("filtro_fim").value || ymToday();
+    // normalize if user inverted
+    const start = ini <= fim ? ini : fim;
+    const end = ini <= fim ? fim : ini;
+    return { start, end };
+  }
+
+  // Receita manual: por mês do período (modelo simples de mercado: valor fixo por mês)
+  function getReceitaManualPerMonth(){
+    return parseMoney(document.getElementById("receita_manual").value || "");
+  }
+
+  function monthsBetweenInclusive(startYm, endYm){
+    const [sy, sm] = startYm.split("-").map(Number);
+    const [ey, em] = endYm.split("-").map(Number);
+    const out = [];
+    let y = sy, m = sm;
+    while(y < ey || (y===ey && m<=em)){
+      out.push(`${y}-${String(m).padStart(2,"0")}`);
+      m++;
+      if(m===13){ m=1; y++; }
+    }
+    return out;
+  }
+
+  async function addNota(){
+    const tipo = document.getElementById("f_tipo").value;
+    const status = document.getElementById("f_status").value;
+    const nome = document.getElementById("f_nome").value.trim();
+    const doc  = document.getElementById("f_doc").value.trim();
+    const categoria = document.getElementById("f_categoria").value;
+    const cc = document.getElementById("f_cc").value.trim();
+    const competencia = document.getElementById("f_competencia").value || ymToday();
+    const venc = document.getElementById("f_venc").value || nowISODate();
+    const valor = parseMoney(document.getElementById("f_valor").value);
+    const numero = document.getElementById("f_numero").value.trim();
+    const desc = document.getElementById("f_desc").value.trim();
+    let pagoEm = document.getElementById("f_pagoem").value;
+
+    if(!nome){ toast("Faltou algo", "Informe o fornecedor/colaborador (PJ)."); return; }
+    if(!valor || valor<=0){ toast("Faltou algo", "Informe um valor válido (maior que zero)."); return; }
+    if(status==="PAGA" && !pagoEm) pagoEm = nowISODate();
+
+    const fileInput = document.getElementById("f_file");
+    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+    let attachment = null;
+    if(file){
+      if(file.size > 3.5 * 1024 * 1024){
+        toast("Arquivo grande", "Use arquivos menores (até ~3.5MB) neste protótipo.");
+        return;
+      }
+      const dataUrl = await fileToDataURL(file);
+      attachment = { name:file.name, type:file.type || "application/octet-stream", size:file.size, dataUrl };
+    }
+
+    const nota = {
+      id: uid(),
+      tipo,
+      status,
+      fornecedor: nome,
+      doc,
+      categoria,
+      centroCusto: cc,
+      competencia,
+      vencimento: venc,
+      valor,
+      numero,
+      descricao: desc,
+      criadoEm: new Date().toISOString(),
+      pagoEm: status==="PAGA" ? pagoEm : null,
+      attachment
+    };
+
+    const db = getDB();
+    db.notas.unshift(nota);
+    setDB(db);
+
+    toast("Salvo", "Lançamento adicionado com sucesso.");
+    clearForm();
+    renderAll();
+  }
+
+  function updateStatus(id, status){
+    const db = getDB();
+    const n = db.notas.find(x=>x.id===id);
+    if(!n) return;
+    n.status = status;
+    if(status==="PAGA" && !n.pagoEm) n.pagoEm = nowISODate();
+    if(status!=="PAGA") n.pagoEm = null;
+    setDB(db);
+    renderAll();
+    toast("Atualizado", `Status: ${status==="PAGA"?"Paga":(status==="LANCADA"?"Lançada":"Pendente")}.`);
+  }
+  function markPaid(id){ updateStatus(id, "PAGA"); }
+
+  function deleteNota(id){
+    if(!confirm("Excluir este lançamento?")) return;
+    const db = getDB();
+    db.notas = db.notas.filter(x=>x.id!==id);
+    setDB(db);
+    renderAll();
+    toast("Excluído", "Lançamento removido.");
+  }
+
+  function kvLine(k,v){
+    return `<div style="margin-bottom:10px">
+      <div class="k">${k}</div>
+      <div class="v">${v}</div>
+    </div>`;
+  }
+
+  function openModal(id){
+    const db = getDB();
+    const n = db.notas.find(x=>x.id===id);
+    if(!n) return;
+    state.selectedId = id;
+
+    document.getElementById("m_title").textContent = `${n.fornecedor} — ${moneyBRL(n.valor)}`;
+    document.getElementById("m_sub").textContent = `${n.tipo} • ${DRE_LABELS[n.categoria] || n.categoria} • Competência ${n.competencia}`;
+
+    const kv = [];
+    kv.push(kvLine("ID", `<span class="mono">${n.id}</span>`));
+    kv.push(kvLine("Fornecedor", esc(n.fornecedor)));
+    kv.push(kvLine("Documento", esc(n.doc || "—")));
+    kv.push(kvLine("Tipo", n.tipo==="RECEITA" ? "Receita" : "Despesa"));
+    kv.push(kvLine("Categoria DRE", DRE_LABELS[n.categoria] || n.categoria));
+    kv.push(kvLine("Centro de Custo", esc(n.centroCusto || "—")));
+    kv.push(kvLine("Competência", esc(n.competencia)));
+    kv.push(kvLine("Vencimento", esc(n.vencimento)));
+    kv.push(kvLine("Valor", `<b>${moneyBRL(n.valor)}</b>`));
+    kv.push(kvLine("Status", badgeForStatus(n.status)));
+    kv.push(kvLine("Pago em", esc(n.pagoEm || "—")));
+    kv.push(kvLine("Número da Nota", esc(n.numero || "—")));
+    kv.push(kvLine("Descrição", esc(n.descricao || "—")));
+    document.getElementById("m_kv").innerHTML = kv.join("");
+
+    const p = document.getElementById("m_preview");
+    if(n.attachment && n.attachment.dataUrl){
+      const isImg = (n.attachment.type||"").startsWith("image/");
+      const isPdf = (n.attachment.type||"").includes("pdf") || (n.attachment.name||"").toLowerCase().endsWith(".pdf");
+      let html = `<div class="muted" style="font-size:12px; margin-bottom:10px">
+        Anexo: <b>${esc(n.attachment.name)}</b> (${formatBytes(n.attachment.size)})
+      </div>`;
+      html += `<a class="btn small" download="${escAttr(n.attachment.name)}" href="${n.attachment.dataUrl}">⬇️ Baixar anexo</a>`;
+      html += `<div class="sep"></div>`;
+      if(isImg){
+        html += `<img src="${n.attachment.dataUrl}" alt="Anexo"/>`;
+      }else if(isPdf){
+        html += `<iframe title="pdf" src="${n.attachment.dataUrl}" style="width:100%; height:340px; border:0; border-radius:12px"></iframe>`;
+      }else{
+        html += `<div class="muted" style="font-size:13px">Pré-visualização não disponível. Use “Baixar anexo”.</div>`;
+      }
+      p.innerHTML = html;
+    }else{
+      p.innerHTML = `<div class="muted" style="font-size:13px">Sem anexo.</div>`;
+    }
+
+    document.getElementById("m_footer").textContent = `Criado em ${new Date(n.criadoEm).toLocaleString("pt-BR")}`;
+    document.getElementById("modalOverlay").style.display = "flex";
+  }
+
+  function modalClose(evt){
+    if(evt && evt.target && evt.target.id!=="modalOverlay") return;
+    document.getElementById("modalOverlay").style.display = "none";
+    state.selectedId = null;
+  }
+  function markPaidFromModal(){
+    if(!state.selectedId) return;
+    markPaid(state.selectedId);
+    openModal(state.selectedId);
+  }
+  function duplicateFromModal(){
+    if(!state.selectedId) return;
+    const db = getDB();
+    const n = db.notas.find(x=>x.id===state.selectedId);
+    if(!n) return;
+    const copy = JSON.parse(JSON.stringify(n));
+    copy.id = uid();
+    copy.status = "PENDENTE";
+    copy.pagoEm = null;
+    copy.criadoEm = new Date().toISOString();
+    db.notas.unshift(copy);
+    setDB(db);
+    toast("Duplicado", "Criamos uma cópia como Pendente.");
+    renderAll();
+  }
+
+  function computeMonth(db, ym, statusMode="TODOS"){
+    const statusOk = (n) => {
+      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
+      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
+      return true;
+    };
+    const rows = db.notas.filter(n => (n.competencia||"")===ym).filter(statusOk);
+
+    let receitas = 0, despesas = 0;
+    const byCat = {};
+    rows.forEach(n=>{
+      const isRec = n.tipo==="RECEITA";
+      if(isRec) receitas += n.valor; else despesas += n.valor;
+      const cat = n.categoria || "OUTROS";
+      if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
+      if(isRec) byCat[cat].receitas += n.valor; else byCat[cat].despesas += n.valor;
+      byCat[cat].count += 1;
+    });
+    Object.keys(byCat).forEach(cat=>{
+      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
+    });
+
+    return { ym, rows, receitas, despesas, resultado: receitas - despesas, byCat };
+  }
+
+  function computePeriod(db, startYm, endYm, statusMode="TODOS"){
+    const months = monthsBetweenInclusive(startYm, endYm);
+    const byCat = {};
+    let receitas = 0, despesas = 0;
+    let rows = [];
+
+    months.forEach(m=>{
+      const r = computeMonth(db, m, statusMode);
+      rows = rows.concat(r.rows);
+      receitas += r.receitas;
+      despesas += r.despesas;
+      for(const [cat,agg] of Object.entries(r.byCat)){
+        if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
+        byCat[cat].receitas += agg.receitas||0;
+        byCat[cat].despesas += agg.despesas||0;
+        byCat[cat].count += agg.count||0;
+      }
+    });
+
+    for(const cat of Object.keys(byCat)){
+      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
+    }
+
+    return { months, rows, receitas, despesas, resultado: receitas - despesas, byCat };
+  }
+
+  function drawDREChart(receitas, despesas, resultado){
+    const c = document.getElementById("dreChart");
+    const ctx = c.getContext("2d");
+    const w = c.width, h = c.height;
+    ctx.clearRect(0,0,w,h);
+
+    const pad = 26;
+    const baseY = h - pad;
+    const leftX = pad;
+    const rightX = w - pad;
+
+    ctx.strokeStyle = "rgba(255,255,255,.12)";
+    ctx.lineWidth = 1;
+    for(let i=0;i<5;i++){
+      const y = pad + i*((h-2*pad)/4);
+      ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke();
+    }
+
+    const maxV = Math.max(receitas, despesas, Math.abs(resultado), 1);
+    const bars = [
+      { label:"Receitas", value: receitas, color:"rgba(34,197,94,.75)" },
+      { label:"Despesas", value: despesas, color:"rgba(245,158,11,.70)" },
+      { label:"Resultado", value: resultado, color: resultado>=0 ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.70)" },
+    ];
+
+    const bw = (rightX-leftX) / (bars.length*1.8);
+    const gap = bw*0.8;
+
+    bars.forEach((b, i)=>{
+      const x = leftX + i*(bw+gap) + 60;
+      const val = b.value;
+      const bh = (Math.abs(val) / maxV) * (h - 2*pad);
+      const y = val>=0 ? (baseY - bh) : baseY;
+
+      ctx.fillStyle = b.color;
+      ctx.fillRect(x, y, bw, bh);
+
+      ctx.fillStyle = "rgba(232,238,252,.92)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      ctx.fillText(b.label, x, h-8);
+
+      ctx.fillStyle = "rgba(155,176,211,.95)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      ctx.fillText(shortMoney(val), x, y-8);
+    });
+
+    function shortMoney(v){
+      const abs = Math.abs(v);
+      let s = "";
+      if(abs>=1000000) s = (abs/1000000).toFixed(2).replace(".",",") + "M";
+      else if(abs>=1000) s = (abs/1000).toFixed(1).replace(".",",") + "k";
+      else s = abs.toFixed(0);
+      return (v<0? "-":"") + "R$ " + s;
+    }
+  }
+
+  function renderCadastro(){
+    const db = getDB();
+    if(!document.getElementById("f_competencia").value) document.getElementById("f_competencia").value = ymToday();
+    if(!document.getElementById("f_venc").value) document.getElementById("f_venc").value = nowISODate();
+    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
+
+    const ym = document.getElementById("cad_comp_filter").value || ymToday();
+    const stFilter = document.getElementById("cad_status_filter").value || "TODOS";
+
+    const items = db.notas.filter(n => n.competencia === ym && (stFilter==="TODOS" ? true : n.status===stFilter));
+    let rec = 0, desp = 0, pend = 0, pagas = 0;
+    items.forEach(n=>{
+      if(n.tipo==="RECEITA") rec += n.valor; else desp += n.valor;
+      if(n.status==="PENDENTE") pend++;
+      if(n.status==="PAGA") pagas++;
+    });
+
+    const kpis = [
+      { label:"Receitas (mês)", value: moneyBRL(rec), chip:`${items.filter(n=>n.tipo==="RECEITA").length} itens` },
+      { label:"Despesas (mês)", value: moneyBRL(desp), chip:`${items.filter(n=>n.tipo==="DESPESA").length} itens` },
+      { label:"Resultado (mês)", value: moneyBRL(rec-desp), chip:(rec-desp)>=0 ? "positivo" : "negativo", tone:(rec-desp)>=0 ? "ok":"bad" },
+      { label:"Pagas / Pendentes", value: `${pagas} / ${pend}`, chip:`Total ${items.length}`, tone: pend>0 ? "warn":"ok" },
+    ];
+    document.getElementById("kpis-cadastro").innerHTML = kpis.map(k=>`
+      <div class="kpi">
+        <div class="t">
+          <div class="l">${k.label}</div>
+          <div class="chip ${k.tone||""}">${k.chip||""}</div>
+        </div>
+        <div class="n">${k.value}</div>
+      </div>
+    `).join("");
+
+    const last = [...db.notas].slice(0,6);
+    if(last.length===0){
+      document.getElementById("lastList").innerHTML = `Ainda não há lançamentos. Cadastre uma <b>receita</b> e uma <b>despesa</b> para validar o DRE.`;
+    }else{
+      document.getElementById("lastList").innerHTML = last.map(n=>`
+        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div>
+            <div style="font-weight:650">${esc(n.fornecedor)}</div>
+            <div class="mini">Comp: ${esc(n.competencia)} • Venc: ${esc(n.vencimento)} • ${esc(DRE_LABELS[n.categoria]||n.categoria)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
+            <div class="mini">${badgeForStatus(n.status)}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  function renderNotas(){
+    const db = getDB();
+    const q = (document.getElementById("q").value||"").toLowerCase().trim();
+    const tipo = document.getElementById("notas_tipo").value || "TODOS";
+    const status = document.getElementById("notas_status").value || "TODOS";
+    const compExact = document.getElementById("notas_comp").value || "";
+
+    const { start, end } = getPeriod();
+
+    let rows = [...db.notas];
+
+    // Period filter always applies (market expectation)
+    rows = rows.filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end);
+
+    // optional exact month filter
+    if(compExact) rows = rows.filter(n => n.competencia===compExact);
+
+    if(tipo!=="TODOS") rows = rows.filter(n => n.tipo===tipo);
+    if(status!=="TODOS") rows = rows.filter(n => n.status===status);
+
+    if(q){
+      rows = rows.filter(n =>
+        (n.fornecedor||"").toLowerCase().includes(q) ||
+        (n.numero||"").toLowerCase().includes(q) ||
+        (n.descricao||"").toLowerCase().includes(q) ||
+        (n.doc||"").toLowerCase().includes(q)
+      );
+    }
+
+    const tbody = document.getElementById("tbodyNotas");
+    if(rows.length===0){
+      tbody.innerHTML = `<tr><td colspan="8" class="muted">Nenhum lançamento encontrado para os filtros / período.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(n=>{
+      const typeLabel = n.tipo==="RECEITA" ? "Receita" : "Despesa";
+      const typeBadge = n.tipo==="RECEITA"
+        ? `<span class="badge ok"><span class="dot"></span>${typeLabel}</span>`
+        : `<span class="badge bad"><span class="dot"></span>${typeLabel}</span>`;
+
+      return `<tr>
+        <td>
+          <div style="font-weight:650">${esc(n.fornecedor)}</div>
+          <div class="mini">${esc(n.doc||"")} ${n.numero?("• "+esc(n.numero)):""}</div>
+        </td>
+        <td>${esc(n.competencia)}</td>
+        <td>
+          ${esc(n.vencimento)}
+          <div class="mini">${n.pagoEm ? ("Pago em "+esc(n.pagoEm)) : ""}</div>
+        </td>
+        <td>${typeBadge}</td>
+        <td>${esc(DRE_LABELS[n.categoria]||n.categoria)}</td>
+        <td><b>${moneyBRL(n.valor)}</b></td>
+        <td>
+          <select class="statusSel" onchange="App.updateStatus('${n.id}', this.value)">
+            ${statusOptions(n.status)}
+          </select>
+          <div class="mini">${badgeForStatus(n.status)}</div>
+        </td>
+        <td>
+          <div class="tdActions">
+            <button class="btn small" onclick="App.openModal('${n.id}')">🔎 Detalhar</button>
+            <button class="btn small primary" onclick="App.markPaid('${n.id}')">✅ Pagar</button>
+            <button class="btn small" onclick="App.deleteNota('${n.id}')">🗑️ Excluir</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderDRE(){
+    const db = getDB();
+    const { start, end } = getPeriod();
+    const statusMode = document.getElementById("dre_status_mode").value || "TODOS";
+    const mode = document.getElementById("dre_mode").value || "PERIODO";
+
+    const receitaManualMensal = getReceitaManualPerMonth();
+    const months = monthsBetweenInclusive(start, end);
+    const receitaManualTotal = receitaManualMensal * months.length;
+
+    const calc = computePeriod(db, start, end, statusMode);
+
+    const receitasAdj = calc.receitas + receitaManualTotal;
+    const resultadoAdj = receitasAdj - calc.despesas;
+
+    const kpis = [
+      { label:"Receitas (lançadas)", value: moneyBRL(calc.receitas), chip:`${calc.rows.filter(n=>n.tipo==="RECEITA").length} itens` },
+      { label:"Receita manual (período)", value: moneyBRL(receitaManualTotal), chip:`${months.length} mês(es)` },
+      { label:"Despesas (período)", value: moneyBRL(calc.despesas), chip:`${calc.rows.filter(n=>n.tipo==="DESPESA").length} itens`, tone:"warn" },
+      { label:"Resultado (período)", value: moneyBRL(resultadoAdj), chip: resultadoAdj>=0 ? "positivo":"negativo", tone: resultadoAdj>=0 ? "ok":"bad" },
+    ];
+
+    document.getElementById("kpis-dre").innerHTML = kpis.map(k=>`
+      <div class="kpi">
+        <div class="t">
+          <div class="l">${k.label}</div>
+          <div class="chip ${k.tone||""}">${k.chip||""}</div>
+        </div>
+        <div class="n">${k.value}</div>
+      </div>
+    `).join("");
+
+    // categories
+    const cats = Object.entries(calc.byCat).sort((a,b)=> Math.abs(b[1].total) - Math.abs(a[1].total));
+    if(cats.length===0){
+      document.getElementById("dreCats").innerHTML = "Sem lançamentos no período.";
+    }else{
+      document.getElementById("dreCats").innerHTML = cats.map(([cat,agg])=>{
+        const rec = agg.receitas||0, desp = agg.despesas||0;
+        const res = rec - desp;
+        const tone = res>=0 ? "ok" : "bad";
+        return `<div style="padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:center">
+            <div>
+              <div style="font-weight:700">${esc(DRE_LABELS[cat]||cat)}</div>
+              <div class="mini">${agg.count} itens • Receitas ${moneyBRL(rec)} • Despesas ${moneyBRL(desp)}</div>
+            </div>
+            <div class="badge ${tone}"><span class="dot"></span>${moneyBRL(res)}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // top launches
+    const top = [...calc.rows].sort((a,b)=> b.valor - a.valor).slice(0,10);
+    document.getElementById("dreTop").innerHTML = top.length===0
+      ? "—"
+      : top.map(n=>`
+        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div>
+            <div style="font-weight:650">${esc(n.fornecedor)}</div>
+            <div class="mini">${n.tipo==="RECEITA"?"Receita":"Despesa"} • ${esc(DRE_LABELS[n.categoria]||n.categoria)} • ${badgeForStatus(n.status)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
+            <div class="mini"><button class="btn small" onclick="App.openModal('${n.id}')">Detalhar</button></div>
+          </div>
+        </div>
+      `).join("");
+
+    drawDREChart(receitasAdj, calc.despesas, resultadoAdj);
+
+    if(mode==="MENSAL"){
+      // optionally show month breakdown by changing top list
+      // (kept simple; user asked dashboard, not a full report grid)
+    }
+  }
+
+  
+  function exportCNAB(){
+    // Exporta Excel offline (SpreadsheetML 2003) -> .XLS (abre no Excel Mac/Windows)
+    const db = getDB();
+    const { start, end } = getPeriod();
+    const statusMode = document.getElementById("dre_status_mode")?.value || "TODOS";
+    const months = monthsBetweenInclusive(start, end);
+
+    const statusOk = (n) => {
+      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
+      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
+      return true;
+    };
+
+    const rows = db.notas
+      .filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end)
+      .filter(statusOk);
+
+    const header = ["Tipo (C/D)","Competência","Categoria","Fornecedor","Valor","Documento","Nota","Status"];
+    const data = [header];
+
+    rows.forEach(n=>{
+      data.push([
+        n.tipo==="RECEITA" ? "C" : "D",
+        n.competencia,
+        n.categoria,
+        n.fornecedor,
+        Number(n.valor||0),
+        n.doc || "",
+        n.numero || "",
+        n.status
+      ]);
+    });
+
+    const receitaManualMensal = getReceitaManualPerMonth();
+    if(receitaManualMensal > 0){
+      months.forEach(m=>{
+        data.push(["C", m, "RECEITA_OPERACIONAL", "AJUSTE_RECEITA_MANUAL", Number(receitaManualMensal), "", "", "MANUAL"]);
+      });
+    }
+
+    const xml = buildSpreadsheetML("CONTABIL", data);
+    downloadFile(xml, `dre_contabil_${start}_a_${end}.xls`, "application/vnd.ms-excel;charset=utf-8");
+    toast("Exportado", "Arquivo Excel (.xls) gerado e baixado.");
+  }
+
+  function buildSpreadsheetML(sheetName, aoa){
+    const esc = (s)=> String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+    const isNum = (v)=> typeof v==="number" && isFinite(v);
+
+    let rowsXml = "";
+    aoa.forEach((row, ri)=>{
+      let cells = "";
+      row.forEach((cell, ci)=>{
+        const type = isNum(cell) ? "Number" : "String";
+        const value = isNum(cell) ? String(cell) : esc(cell);
+        // Header style on first row
+        const style = (ri===0) ? ' ss:StyleID="sHeader"' : "";
+        cells += `<Cell${style}><Data ss:Type="${type}">${value}</Data></Cell>`;
+      });
+      rowsXml += `<Row>${cells}</Row>`;
+    });
+
+    return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="sHeader">
+      <Font ss:Bold="1"/>
+      <Interior ss:Color="#D9E1F2" ss:Pattern="Solid"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="${esc(sheetName)}">
+    <Table>
+      ${rowsXml}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+  }
+
+  function downloadFile(content, filename, mime){
+    const blob = new Blob([content], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 250);
+  }
+
+  function cleanPipe(s){
+    return String(s||"").replace(/\|/g," ").replace(/\n/g," ").trim();
+  }
+
+  // =========================
+  // Tela 4: Documentos (Pastas)
+  // =========================
+  const docsState = { tipo:null, grupo:null, ym:null };
+
+  function grupoFromNota(n){
+    // Separa Despesas: Operacionais / Administrativas / Pessoal
+    if(n.tipo === "DESPESA"){
+      if(n.categoria === "DESPESAS_PESSOAL") return "Pessoal";
+      if(n.categoria === "DESPESAS_ADM") return "Administrativas";
+      return "Operacionais";
+    }
+    // Receitas: Operacional / Financeira / Outros
+    if(n.categoria === "RECEITA_FINANCEIRA") return "Financeira";
+    if(n.categoria === "RECEITA_OPERACIONAL") return "Operacional";
+    return "Outros";
+  }
+
+  function buildDocsIndex(db){
+    // index[tipoLabel][grupo][ym] = array of notas
+    const index = { "Despesas": {}, "Receitas": {} };
+    db.notas.forEach(n=>{
+      const tipoLabel = (n.tipo==="DESPESA") ? "Despesas" : "Receitas";
+      const grupo = grupoFromNota(n);
+      const ym = n.competencia || ymToday();
+      if(!index[tipoLabel][grupo]) index[tipoLabel][grupo] = {};
+      if(!index[tipoLabel][grupo][ym]) index[tipoLabel][grupo][ym] = [];
+      index[tipoLabel][grupo][ym].push(n);
+    });
+    return index;
+  }
+
+  function renderDocs(){
+    const db = getDB();
+    const index = buildDocsIndex(db);
+
+    // Build tree UI
+    const tree = document.getElementById("docsTree");
+    const types = ["Despesas","Receitas"];
+
+    const treeHtml = types.map(tipoLabel=>{
+      const grupos = Object.keys(index[tipoLabel]||{}).sort((a,b)=> a.localeCompare(b));
+      if(grupos.length===0){
+        return `<div style="padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div style="font-weight:800">${tipoLabel}</div>
+          <div class="mini">Sem documentos.</div>
+        </div>`;
+      }
+
+      const gruposHtml = grupos.map(gr=>{
+        const monthsObj = index[tipoLabel][gr]||{};
+        const months = Object.keys(monthsObj).sort((a,b)=> b.localeCompare(a));
+        const monthsHtml = months.map(ym=>{
+          const count = monthsObj[ym].length;
+          const active = (docsState.tipo===tipoLabel && docsState.grupo===gr && docsState.ym===ym);
+          return `<button class="btn small" style="width:100%; justify-content:space-between; margin-top:8px; ${active ? "border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.10)" : ""}"
+            data-docs="1" data-tipo="${escAttr(tipoLabel)}" data-grupo="${escAttr(gr)}" data-ym="${escAttr(ym)}">
+            <span>📁 ${esc(ym)}</span>
+            <span class="pill">${count}</span>
+          </button>`;
+        }).join("");
+
+        const isOpen = (docsState.tipo===tipoLabel && docsState.grupo===gr);
+        return `<div style="padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin:10px 0">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <div style="font-weight:800">${esc(gr)}</div>
+            <button class="btn small" data-docs-toggle="1" data-tipo="${escAttr(tipoLabel)}" data-grupo="${escAttr(gr)}">
+              ${isOpen ? "▾" : "▸"}
+            </button>
+          </div>
+          <div style="margin-top:8px; display:${isOpen ? "block" : "none"}" id="docs_${cssId(tipoLabel)}_${cssId(gr)}">
+            ${monthsHtml}
+          </div>
+        </div>`;
+      }).join("");
+
+      const isTypeOpen = (docsState.tipo===tipoLabel);
+      return `<div style="padding:12px; border:1px solid rgba(255,255,255,.12); border-radius:16px; background: rgba(255,255,255,.02); margin-bottom:12px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <div style="font-weight:900">${tipoLabel}</div>
+          <button class="btn small" data-docs-type="1" data-tipo="${escAttr(tipoLabel)}">${isTypeOpen ? "▾" : "▸"}</button>
+        </div>
+        <div style="margin-top:10px; display:${isTypeOpen ? "block" : "none"}" id="docstype_${cssId(tipoLabel)}">
+          ${gruposHtml}
+        </div>
+      </div>`;
+    }).join("");
+
+    tree.innerHTML = treeHtml;
+
+    // bind interactions (event delegation)
+    tree.onclick = (e)=>{
+      const btn = e.target.closest("button");
+      if(!btn) return;
+
+      if(btn.dataset.docsType){
+        const tipo = btn.dataset.tipo;
+        // toggle type open/close: if already selected, collapse and clear selection
+        if(docsState.tipo===tipo && !docsState.grupo && !docsState.ym){
+          docsState.tipo = null;
+        }else{
+          docsState.tipo = tipo;
+          docsState.grupo = null;
+          docsState.ym = null;
+        }
+        renderDocs();
+        renderDocsList();
+        return;
+      }
+
+      if(btn.dataset.docsToggle){
+        const tipo = btn.dataset.tipo;
+        const grupo = btn.dataset.grupo;
+        // toggle group open/close under a type
+        if(docsState.tipo===tipo && docsState.grupo===grupo && !docsState.ym){
+          docsState.grupo = null;
+        }else{
+          docsState.tipo = tipo;
+          docsState.grupo = grupo;
+          docsState.ym = null;
+        }
+        renderDocs();
+        renderDocsList();
+        return;
+      }
+
+      if(btn.dataset.docs){
+        docsState.tipo = btn.dataset.tipo;
+        docsState.grupo = btn.dataset.grupo;
+        docsState.ym = btn.dataset.ym;
+        renderDocs();
+        renderDocsList();
+      }
+    };
+
+    // initial list render
+    renderDocsList();
+  }
+
+  function cssId(s){
+    return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"_");
+  }
+
+  function renderDocsList(){
+    const db = getDB();
+    const tbody = document.getElementById("docsTbody");
+    const title = document.getElementById("docsTitle");
+    const sub = document.getElementById("docsSub");
+
+    if(!docsState.tipo || !docsState.grupo || !docsState.ym){
+      title.textContent = "Selecione uma pasta";
+      sub.textContent = "Escolha Tipo → Categoria → Competência para listar as notas.";
+      tbody.innerHTML = `<tr><td colspan="6" class="muted">Nenhuma pasta selecionada.</td></tr>`;
+      return;
+    }
+
+    title.textContent = `${docsState.tipo} → ${docsState.grupo} → ${docsState.ym}`;
+    sub.textContent = "Mostrando todos os documentos dessa pasta.";
+
+    let rows = db.notas.filter(n=>{
+      const tipoLabel = (n.tipo==="DESPESA") ? "Despesas" : "Receitas";
+      if(tipoLabel !== docsState.tipo) return false;
+      if(grupoFromNota(n) !== docsState.grupo) return false;
+      return (n.competencia||"") === docsState.ym;
+    });
+
+    // sort by created date desc
+    rows.sort((a,b)=> (b.criadoEm||"").localeCompare(a.criadoEm||""));
+
+    if(rows.length===0){
+      tbody.innerHTML = `<tr><td colspan="6" class="muted">Sem notas nesta pasta.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(n=>{
+      const fileName = n.attachment?.name ? esc(n.attachment.name) : "<span class='muted'>Sem anexo</span>";
+      const fornecedor = esc(n.fornecedor||"—");
+      const cat = esc(DRE_LABELS[n.categoria] || n.categoria);
+      return `<tr>
+        <td>
+          <div style="font-weight:700">${fileName}</div>
+          <div class="mini">${fornecedor} ${n.numero?("• "+esc(n.numero)):""}</div>
+        </td>
+        <td>${esc(n.competencia||"—")}</td>
+        <td>${cat}</td>
+        <td><b>${moneyBRL(n.valor||0)}</b></td>
+        <td>${badgeForStatus(n.status)}</td>
+        <td>
+          <div class="tdActions">
+            <button class="btn small" onclick="App.openModal('${n.id}')">🔎 Visualizar</button>
+            <button class="btn small primary" onclick="App.markPaid('${n.id}')">✅ Pagar</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderAll(){
+    // persist top filters to localStorage for convenience
+    const db = getDB();
+    const { start, end } = getPeriod();
+    db._ui = db._ui || {};
+    db._ui.periodStart = start;
+    db._ui.periodEnd = end;
+    db._ui.receitaManualMensal = document.getElementById("receita_manual").value || "";
+    setDB(db);
+
+    if(state.view==="cadastro") renderCadastro();
+    if(state.view==="notas") renderNotas();
+    if(state.view==="dre") renderDRE();
+    if(state.view==="documentos") renderDocs();
+  }
+
+  function initTopFilters(){
+    const db = getDB();
+    const pStart = db._ui?.periodStart || ymToday();
+    const pEnd = db._ui?.periodEnd || ymToday();
+    const recMan = db._ui?.receitaManualMensal || "";
+
+    document.getElementById("filtro_inicio").value = pStart;
+    document.getElementById("filtro_fim").value = pEnd;
+    document.getElementById("receita_manual").value = recMan;
+
+    // defaults for some selects
+    document.getElementById("dre_status_mode").value = "TODOS";
+    document.getElementById("dre_mode").value = "PERIODO";
+  }
+
+  function init(){
+    clearForm();
+    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
+    initTopFilters();
+    renderAll();
+  }
+
+  return {
+    go,
+    addNota,
+    clearForm,
+    renderAll,
+    renderNotas,
+    renderDRE,
+    renderDocs,
+    updateStatus,
+    markPaid,
+    deleteNota,
+    openModal,
+    modalClose,
+    markPaidFromModal,
+    duplicateFromModal,
+    exportCNAB
+  };
+})();
+
+window.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".nav button[data-view]").forEach(btn => {
+    btn.addEventListener("click", () => App.go(btn.getAttribute("data-view")));
+  });
+  window.App = App;
+  App.go("dre");
+});
+</script>
+</body>
+</html>
