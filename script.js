@@ -897,6 +897,7 @@ const App = (() => {
         id: copy.id,
         tipo: copy.tipo,
         status: copy.status,
+        fornecedor: copy.fornecedor,
         categoria: copy.categoria,
         centro_custo: copy.centroCusto || null,
         competencia: copy.competencia + '-01', // YYYY-MM para YYYY-MM-01
