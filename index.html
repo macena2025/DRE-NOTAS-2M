@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>2M | Notas + DRE — HTML Único (Revisado)</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="app">
@@ -366,6 +367,15 @@
     <div class="m" id="toastM">—</div>
   </div>
 
+  <script src="supabase.js"></script>
   <script src="script.js"></script>
+  <script>
+    // Aguardar um pouco e verificar App
+    setTimeout(() => {
+      if (window.App) {
+        console.log('App initialized successfully');
+      }
+    }, 150);
+  </script>
 </body>
 </html>

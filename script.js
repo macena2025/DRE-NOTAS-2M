@@ -5,7 +5,6 @@
    ============================ */
 
 const App = (() => {
-  const LS_KEY = "dre_mock_v2"; // novo key para evitar conflito com versões quebradas
   const state = { view:"cadastro", selectedId:null };
 
   const DRE_LABELS = {
@@ -40,23 +39,22 @@ const App = (() => {
     const v = Number(s);
     return isNaN(v) ? 0 : v;
   }
-  function uid(){ return "N" + Math.random().toString(16).slice(2) + Date.now().toString(16); }
+  function uid(){ return crypto.randomUUID() }
 
-  function load(){
-    const raw = localStorage.getItem(LS_KEY);
-    if(!raw) return { notas: [], receitaManualByMonth: {} };
-    try{
-      const obj = JSON.parse(raw);
-      if(!Array.isArray(obj.notas)) obj.notas = [];
-      if(!obj.receitaManualByMonth) obj.receitaManualByMonth = {};
-      return obj;
-    }catch(e){
-      return { notas: [], receitaManualByMonth: {} };
+  async function getDB(){
+    // Somente Supabase - não há fallback para localStorage
+    if (!window.SupabaseDB || !window.SupabaseDB.isAvailable()) {
+      throw new Error('Supabase não está disponível. Verifique sua conexão.');
+    }
+    
+    try {
+      const notas = await window.SupabaseDB.getNotas();
+      return notas; // Retorna array direto do Supabase
+    } catch (error) {
+      console.error('Erro ao carregar do Supabase:', error);
+      throw error;
     }
   }
-  function save(db){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
-  function getDB(){ return load(); }
-  function setDB(db){ save(db); }
 
   function toast(title, msg){
     const el = document.getElementById("toast");
@@ -185,15 +183,9 @@ const App = (() => {
     const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
 
     let attachment = null;
-    if(file){
-      if(file.size > 3.5 * 1024 * 1024){
-        toast("Arquivo grande", "Use arquivos menores (até ~3.5MB) neste protótipo.");
-        return;
-      }
-      const dataUrl = await fileToDataURL(file);
-      attachment = { name:file.name, type:file.type || "application/octet-stream", size:file.size, dataUrl };
-    }
+    let supabaseFile = null;
 
+    // Definir objeto nota antes de usar (sem ID para gerar automaticamente)
     const nota = {
       id: uid(),
       tipo,
@@ -212,35 +204,168 @@ const App = (() => {
       attachment
     };
 
-    const db = getDB();
-    db.notas.unshift(nota);
-    setDB(db);
+     
+    // Somente Supabase
+    try {
+      // Primeiro salvar o lançamento para obter o ID (sem passar ID, deixar o banco gerar)
+      if(file && file.size > 3.5 * 1024 * 1024){
+        toast("Arquivo grande", "Use arquivos menores (até ~3.5MB) neste protótipo.");
+        return;
+      }
 
-    toast("Salvo", "Lançamento adicionado com sucesso.");
+      const notaData = {
+        id: uid(),
+        tipo: nota.tipo,
+        status: nota.status,
+        categoria: nota.categoria,
+        centro_custo: nota.centroCusto || null,
+        competencia: nota.competencia + '-01',
+        valor: nota.valor,
+        descricao: nota.descricao || `${nota.fornecedor} - ${nota.doc || ''}`,
+        pago_em: nota.pagoEm || null,
+        attachment_data: null // Será preenchido após o upload
+      };
+      
+      console.log('🔍 Salvando lançamento primeiro:', notaData);
+      
+      // Salvar lançamento para obter o ID real
+      console.log('🔍 Salvando lançamento para obter ID...');
+      const lancamentoSalvo = await window.SupabaseDB.saveNota(notaData);
+      console.log('🔍 Lançamento salvo, ID:', lancamentoSalvo.id);
+
+      if (file) {
+        // Agora fazer upload do arquivo
+        supabaseFile = await window.SupabaseDB.uploadFile(file, file.name);
+        
+        // Salvar na tabela anexos
+        const anexoSalvo = await saveAnexo(lancamentoSalvo.id, supabaseFile, file);
+        console.log('🔍 Anexo salvo na tabela anexos:', anexoSalvo);
+        
+        attachment = {
+          name: supabaseFile.name,
+          path: supabaseFile.path,
+          publicUrl: supabaseFile.publicUrl,
+          size: supabaseFile.size,
+          type: supabaseFile.type
+        };
+      }
+
+      toast("Sucesso", "Lançamento e anexo salvos com sucesso.");
+    } catch (error) {
+      console.error('Erro no upload Supabase:', error);
+      toast("Erro no upload", `Falha: ${error.message || 'Erro desconhecido'}`);
+      return;
+    }
+
+    // // Somente Supabase
+    // try {
+    //   console.log('🔍 Dados da nota antes de enviar:', nota);
+    //   console.log('🔍 nota.competencia original:', nota.competencia);
+      
+    //   // Verificar se já tem -01 no valor
+    //   const competencia = nota.competencia.endsWith('-01') ? nota.competencia : nota.competencia + '-01';
+      
+    //   const notaData = {
+    //     id: nota.id,
+    //     tipo: nota.tipo,
+    //     status: nota.status,
+    //     categoria: nota.categoria,
+    //     centro_custo: nota.centroCusto || null,
+    //     competencia: competencia,
+    //     valor: nota.valor,
+    //     descricao: nota.descricao || `${nota.fornecedor} - ${nota.doc || ''}`,
+    //     pago_em: nota.pagoEm || null,
+    //     attachment_data: attachment || null
+    //   };
+      
+    //   console.log('🔍 Dados da nota antes de enviar:', nota);
+    //   console.log('🔍 nota.competencia original:', nota.competencia);
+    //   console.log('🔍 competencia final:', competencia);
+      
+    //   console.log('🔍 notaData sendo enviada:', notaData);
+      
+    //   console.log('🔍 Enviando para Supabase:', notaData);
+    //   console.log('🔍 notaData.competencia tipo:', typeof notaData.competencia, notaData.competencia);
+      
+    //   await window.SupabaseDB.saveNota(notaData);
+    //   toast("Salvo", "Lançamento adicionado com sucesso no Supabase.");
+    // } catch (error) {
+    //   console.error('Erro ao salvar no Supabase:', error);
+    //   console.error('Stack trace:', error.stack);
+    //   toast("Erro", `Falha: ${error.message || 'Erro de conexão'}`);
+    //   return;
+    // }
+    
     clearForm();
     renderAll();
   }
 
-  function updateStatus(id, status){
-    const db = getDB();
-    const n = db.notas.find(x=>x.id===id);
-    if(!n) return;
-    n.status = status;
-    if(status==="PAGA" && !n.pagoEm) n.pagoEm = nowISODate();
-    if(status!=="PAGA") n.pagoEm = null;
-    setDB(db);
-    renderAll();
-    toast("Atualizado", `Status: ${status==="PAGA"?"Paga":(status==="LANCADA"?"Lançada":"Pendente")}.`);
+  async function updateStatus(id, status){
+    // Somente Supabase
+    try {
+      const updates = { status };
+      if (status === "PAGA") {
+        updates.pago_em = nowISODate();
+      } else {
+        updates.pago_em = null;
+      }
+      
+      await window.SupabaseDB.updateNota(id, updates);
+      await renderAll();
+      toast("Atualizado", `Status: ${status==="PAGA"?"Paga":(status==="LANCADA"?"Lançada":"Pendente")}.`);
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      toast("Erro", "Falha ao atualizar status.");
+    }
   }
-  function markPaid(id){ updateStatus(id, "PAGA"); }
 
-  function deleteNota(id){
+  async function saveAnexo(lancamentoId, supabaseFile, file) {
+    try {
+      // Usar o cliente do Supabase que está no window
+      if (!window.supabaseClient) {
+        throw new Error('supabaseClient não disponível');
+      }
+      
+      const anexoData = {
+        lancamento_id: lancamentoId,
+        arquivo_nome: file.name,
+        arquivo_path: supabaseFile.path
+      };
+      
+      console.log('🔍 Salvando anexo:', anexoData);
+      
+      const { data, error } = await window.supabaseClient
+        .from('anexos')
+        .insert([anexoData])
+        .select();
+      
+      if (error) {
+        console.error('Erro ao salvar anexo:', error);
+        throw new Error(`Erro ao salvar anexo: ${error.message}`);
+      }
+      
+      console.log('✅ Anexo salvo:', data[0]);
+      return data[0];
+      
+    } catch (error) {
+      console.error('Erro ao salvar anexo:', error);
+      throw error;
+    }
+  }
+
+  function markPaid(id){ updateStatus(id, "PAGA"); }
+  async function deleteNota(id){
     if(!confirm("Excluir este lançamento?")) return;
-    const db = getDB();
-    db.notas = db.notas.filter(x=>x.id!==id);
-    setDB(db);
-    renderAll();
-    toast("Excluído", "Lançamento removido.");
+    
+    // Somente Supabase
+    try {
+      await window.SupabaseDB.deleteNota(id);
+      await renderAll();
+      toast("Excluído", "Lançamento removido do Supabase.");
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      toast("Erro", "Falha ao excluir lançamento.");
+    }
   }
 
   function kvLine(k,v){
@@ -250,9 +375,15 @@ const App = (() => {
     </div>`;
   }
 
-  function openModal(id){
-    const db = getDB();
-    const n = db.notas.find(x=>x.id===id);
+  function modalClose(evt){
+    if(evt && evt.target && evt.target.id!=="modalOverlay") return;
+    document.getElementById("modalOverlay").style.display = "none";
+    state.selectedId = null;
+  }
+
+  async function openModal(id){
+    const db = await getDB();
+    const n = db.find(x=>x.id===id);
     if(!n) return;
     state.selectedId = id;
 
@@ -289,7 +420,7 @@ const App = (() => {
       }else if(isPdf){
         html += `<iframe title="pdf" src="${n.attachment.dataUrl}" style="width:100%; height:340px; border:0; border-radius:12px"></iframe>`;
       }else{
-        html += `<div class="muted" style="font-size:13px">Pré-visualização não disponível. Use “Baixar anexo”.</div>`;
+        html += `<div class="muted" style="font-size:13px">Pré-visualização não disponível. Use "Baixar anexo".</div>`;
       }
       p.innerHTML = html;
     }else{
@@ -298,386 +429,6 @@ const App = (() => {
 
     document.getElementById("m_footer").textContent = `Criado em ${new Date(n.criadoEm).toLocaleString("pt-BR")}`;
     document.getElementById("modalOverlay").style.display = "flex";
-  }
-
-  function modalClose(evt){
-    if(evt && evt.target && evt.target.id!=="modalOverlay") return;
-    document.getElementById("modalOverlay").style.display = "none";
-    state.selectedId = null;
-  }
-  function markPaidFromModal(){
-    if(!state.selectedId) return;
-    markPaid(state.selectedId);
-    openModal(state.selectedId);
-  }
-  function duplicateFromModal(){
-    if(!state.selectedId) return;
-    const db = getDB();
-    const n = db.notas.find(x=>x.id===state.selectedId);
-    if(!n) return;
-    const copy = JSON.parse(JSON.stringify(n));
-    copy.id = uid();
-    copy.status = "PENDENTE";
-    copy.pagoEm = null;
-    copy.criadoEm = new Date().toISOString();
-    db.notas.unshift(copy);
-    setDB(db);
-    toast("Duplicado", "Criamos uma cópia como Pendente.");
-    renderAll();
-  }
-
-  function computeMonth(db, ym, statusMode="TODOS"){
-    const statusOk = (n) => {
-      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
-      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
-      return true;
-    };
-    const rows = db.notas.filter(n => (n.competencia||"")===ym).filter(statusOk);
-
-    let receitas = 0, despesas = 0;
-    const byCat = {};
-    rows.forEach(n=>{
-      const isRec = n.tipo==="RECEITA";
-      if(isRec) receitas += n.valor; else despesas += n.valor;
-      const cat = n.categoria || "OUTROS";
-      if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
-      if(isRec) byCat[cat].receitas += n.valor; else byCat[cat].despesas += n.valor;
-      byCat[cat].count += 1;
-    });
-    Object.keys(byCat).forEach(cat=>{
-      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
-    });
-
-    return { ym, rows, receitas, despesas, resultado: receitas - despesas, byCat };
-  }
-
-  function computePeriod(db, startYm, endYm, statusMode="TODOS"){
-    const months = monthsBetweenInclusive(startYm, endYm);
-    const byCat = {};
-    let receitas = 0, despesas = 0;
-    let rows = [];
-
-    months.forEach(m=>{
-      const r = computeMonth(db, m, statusMode);
-      rows = rows.concat(r.rows);
-      receitas += r.receitas;
-      despesas += r.despesas;
-      for(const [cat,agg] of Object.entries(r.byCat)){
-        if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
-        byCat[cat].receitas += agg.receitas||0;
-        byCat[cat].despesas += agg.despesas||0;
-        byCat[cat].count += agg.count||0;
-      }
-    });
-
-    for(const cat of Object.keys(byCat)){
-      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
-    }
-
-    return { months, rows, receitas, despesas, resultado: receitas - despesas, byCat };
-  }
-
-  function drawDREChart(receitas, despesas, resultado){
-    const c = document.getElementById("dreChart");
-    const ctx = c.getContext("2d");
-    const w = c.width, h = c.height;
-    ctx.clearRect(0,0,w,h);
-
-    const pad = 26;
-    const baseY = h - pad;
-    const leftX = pad;
-    const rightX = w - pad;
-
-    ctx.strokeStyle = "rgba(255,255,255,.12)";
-    ctx.lineWidth = 1;
-    for(let i=0;i<5;i++){
-      const y = pad + i*((h-2*pad)/4);
-      ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke();
-    }
-
-    const maxV = Math.max(receitas, despesas, Math.abs(resultado), 1);
-    const bars = [
-      { label:"Receitas", value: receitas, color:"rgba(34,197,94,.75)" },
-      { label:"Despesas", value: despesas, color:"rgba(245,158,11,.70)" },
-      { label:"Resultado", value: resultado, color: resultado>=0 ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.70)" },
-    ];
-
-    const bw = (rightX-leftX) / (bars.length*1.8);
-    const gap = bw*0.8;
-
-    bars.forEach((b, i)=>{
-      const x = leftX + i*(bw+gap) + 60;
-      const val = b.value;
-      const bh = (Math.abs(val) / maxV) * (h - 2*pad);
-      const y = val>=0 ? (baseY - bh) : baseY;
-
-      ctx.fillStyle = b.color;
-      ctx.fillRect(x, y, bw, bh);
-
-      ctx.fillStyle = "rgba(232,238,252,.92)";
-      ctx.font = "12px ui-sans-serif, system-ui";
-      ctx.fillText(b.label, x, h-8);
-
-      ctx.fillStyle = "rgba(155,176,211,.95)";
-      ctx.font = "12px ui-sans-serif, system-ui";
-      ctx.fillText(shortMoney(val), x, y-8);
-    });
-
-    function shortMoney(v){
-      const abs = Math.abs(v);
-      let s = "";
-      if(abs>=1000000) s = (abs/1000000).toFixed(2).replace(".",",") + "M";
-      else if(abs>=1000) s = (abs/1000).toFixed(1).replace(".",",") + "k";
-      else s = abs.toFixed(0);
-      return (v<0? "-":"") + "R$ " + s;
-    }
-  }
-
-  function renderCadastro(){
-    const db = getDB();
-    if(!document.getElementById("f_competencia").value) document.getElementById("f_competencia").value = ymToday();
-    if(!document.getElementById("f_venc").value) document.getElementById("f_venc").value = nowISODate();
-    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
-
-    const ym = document.getElementById("cad_comp_filter").value || ymToday();
-    const stFilter = document.getElementById("cad_status_filter").value || "TODOS";
-
-    const items = db.notas.filter(n => n.competencia === ym && (stFilter==="TODOS" ? true : n.status===stFilter));
-    let rec = 0, desp = 0, pend = 0, pagas = 0;
-    items.forEach(n=>{
-      if(n.tipo==="RECEITA") rec += n.valor; else desp += n.valor;
-      if(n.status==="PENDENTE") pend++;
-      if(n.status==="PAGA") pagas++;
-    });
-
-    const kpis = [
-      { label:"Receitas (mês)", value: moneyBRL(rec), chip:`${items.filter(n=>n.tipo==="RECEITA").length} itens` },
-      { label:"Despesas (mês)", value: moneyBRL(desp), chip:`${items.filter(n=>n.tipo==="DESPESA").length} itens` },
-      { label:"Resultado (mês)", value: moneyBRL(rec-desp), chip:(rec-desp)>=0 ? "positivo" : "negativo", tone:(rec-desp)>=0 ? "ok":"bad" },
-      { label:"Pagas / Pendentes", value: `${pagas} / ${pend}`, chip:`Total ${items.length}`, tone: pend>0 ? "warn":"ok" },
-    ];
-    document.getElementById("kpis-cadastro").innerHTML = kpis.map(k=>`
-      <div class="kpi">
-        <div class="t">
-          <div class="l">${k.label}</div>
-          <div class="chip ${k.tone||""}">${k.chip||""}</div>
-        </div>
-        <div class="n">${k.value}</div>
-      </div>
-    `).join("");
-
-    const last = [...db.notas].slice(0,6);
-    if(last.length===0){
-      document.getElementById("lastList").innerHTML = `Ainda não há lançamentos. Cadastre uma <b>receita</b> e uma <b>despesa</b> para validar o DRE.`;
-    }else{
-      document.getElementById("lastList").innerHTML = last.map(n=>`
-        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
-          <div>
-            <div style="font-weight:650">${esc(n.fornecedor)}</div>
-            <div class="mini">Comp: ${esc(n.competencia)} • Venc: ${esc(n.vencimento)} • ${esc(DRE_LABELS[n.categoria]||n.categoria)}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
-            <div class="mini">${badgeForStatus(n.status)}</div>
-          </div>
-        </div>
-      `).join("");
-    }
-  }
-
-  function renderNotas(){
-    const db = getDB();
-    const q = (document.getElementById("q").value||"").toLowerCase().trim();
-    const tipo = document.getElementById("notas_tipo").value || "TODOS";
-    const status = document.getElementById("notas_status").value || "TODOS";
-    const compExact = document.getElementById("notas_comp").value || "";
-
-    const { start, end } = getPeriod();
-
-    let rows = [...db.notas];
-
-    // Period filter always applies (market expectation)
-    rows = rows.filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end);
-
-    // optional exact month filter
-    if(compExact) rows = rows.filter(n => n.competencia===compExact);
-
-    if(tipo!=="TODOS") rows = rows.filter(n => n.tipo===tipo);
-    if(status!=="TODOS") rows = rows.filter(n => n.status===status);
-
-    if(q){
-      rows = rows.filter(n =>
-        (n.fornecedor||"").toLowerCase().includes(q) ||
-        (n.numero||"").toLowerCase().includes(q) ||
-        (n.descricao||"").toLowerCase().includes(q) ||
-        (n.doc||"").toLowerCase().includes(q)
-      );
-    }
-
-    const tbody = document.getElementById("tbodyNotas");
-    if(rows.length===0){
-      tbody.innerHTML = `<tr><td colspan="8" class="muted">Nenhum lançamento encontrado para os filtros / período.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = rows.map(n=>{
-      const typeLabel = n.tipo==="RECEITA" ? "Receita" : "Despesa";
-      const typeBadge = n.tipo==="RECEITA"
-        ? `<span class="badge ok"><span class="dot"></span>${typeLabel}</span>`
-        : `<span class="badge bad"><span class="dot"></span>${typeLabel}</span>`;
-
-      return `<tr>
-        <td>
-          <div style="font-weight:650">${esc(n.fornecedor)}</div>
-          <div class="mini">${esc(n.doc||"")} ${n.numero?("• "+esc(n.numero)):""}</div>
-        </td>
-        <td>${esc(n.competencia)}</td>
-        <td>
-          ${esc(n.vencimento)}
-          <div class="mini">${n.pagoEm ? ("Pago em "+esc(n.pagoEm)) : ""}</div>
-        </td>
-        <td>${typeBadge}</td>
-        <td>${esc(DRE_LABELS[n.categoria]||n.categoria)}</td>
-        <td><b>${moneyBRL(n.valor)}</b></td>
-        <td>
-          <select class="statusSel" onchange="App.updateStatus('${n.id}', this.value)">
-            ${statusOptions(n.status)}
-          </select>
-          <div class="mini">${badgeForStatus(n.status)}</div>
-        </td>
-        <td>
-          <div class="tdActions">
-            <button class="btn small" onclick="App.openModal('${n.id}')">🔎 Detalhar</button>
-            <button class="btn small primary" onclick="App.markPaid('${n.id}')">✅ Pagar</button>
-            <button class="btn small" onclick="App.deleteNota('${n.id}')">🗑️ Excluir</button>
-          </div>
-        </td>
-      </tr>`;
-    }).join("");
-  }
-
-  function renderDRE(){
-    const db = getDB();
-    const { start, end } = getPeriod();
-    const statusMode = document.getElementById("dre_status_mode").value || "TODOS";
-    const mode = document.getElementById("dre_mode").value || "PERIODO";
-
-    const receitaManualMensal = getReceitaManualPerMonth();
-    const months = monthsBetweenInclusive(start, end);
-    const receitaManualTotal = receitaManualMensal * months.length;
-
-    const calc = computePeriod(db, start, end, statusMode);
-
-    const receitasAdj = calc.receitas + receitaManualTotal;
-    const resultadoAdj = receitasAdj - calc.despesas;
-
-    const kpis = [
-      { label:"Receitas (lançadas)", value: moneyBRL(calc.receitas), chip:`${calc.rows.filter(n=>n.tipo==="RECEITA").length} itens` },
-      { label:"Receita manual (período)", value: moneyBRL(receitaManualTotal), chip:`${months.length} mês(es)` },
-      { label:"Despesas (período)", value: moneyBRL(calc.despesas), chip:`${calc.rows.filter(n=>n.tipo==="DESPESA").length} itens`, tone:"warn" },
-      { label:"Resultado (período)", value: moneyBRL(resultadoAdj), chip: resultadoAdj>=0 ? "positivo":"negativo", tone: resultadoAdj>=0 ? "ok":"bad" },
-    ];
-
-    document.getElementById("kpis-dre").innerHTML = kpis.map(k=>`
-      <div class="kpi">
-        <div class="t">
-          <div class="l">${k.label}</div>
-          <div class="chip ${k.tone||""}">${k.chip||""}</div>
-        </div>
-        <div class="n">${k.value}</div>
-      </div>
-    `).join("");
-
-    // categories
-    const cats = Object.entries(calc.byCat).sort((a,b)=> Math.abs(b[1].total) - Math.abs(a[1].total));
-    if(cats.length===0){
-      document.getElementById("dreCats").innerHTML = "Sem lançamentos no período.";
-    }else{
-      document.getElementById("dreCats").innerHTML = cats.map(([cat,agg])=>{
-        const rec = agg.receitas||0, desp = agg.despesas||0;
-        const res = rec - desp;
-        const tone = res>=0 ? "ok" : "bad";
-        return `<div style="padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
-          <div style="display:flex; justify-content:space-between; gap:12px; align-items:center">
-            <div>
-              <div style="font-weight:700">${esc(DRE_LABELS[cat]||cat)}</div>
-              <div class="mini">${agg.count} itens • Receitas ${moneyBRL(rec)} • Despesas ${moneyBRL(desp)}</div>
-            </div>
-            <div class="badge ${tone}"><span class="dot"></span>${moneyBRL(res)}</div>
-          </div>
-        </div>`;
-      }).join("");
-    }
-
-    // top launches
-    const top = [...calc.rows].sort((a,b)=> b.valor - a.valor).slice(0,10);
-    document.getElementById("dreTop").innerHTML = top.length===0
-      ? "—"
-      : top.map(n=>`
-        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
-          <div>
-            <div style="font-weight:650">${esc(n.fornecedor)}</div>
-            <div class="mini">${n.tipo==="RECEITA"?"Receita":"Despesa"} • ${esc(DRE_LABELS[n.categoria]||n.categoria)} • ${badgeForStatus(n.status)}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
-            <div class="mini"><button class="btn small" onclick="App.openModal('${n.id}')">Detalhar</button></div>
-          </div>
-        </div>
-      `).join("");
-
-    drawDREChart(receitasAdj, calc.despesas, resultadoAdj);
-
-    if(mode==="MENSAL"){
-      // optionally show month breakdown by changing top list
-      // (kept simple; user asked dashboard, not a full report grid)
-    }
-  }
-
-  
-  function exportCNAB(){
-    // Exporta Excel offline (SpreadsheetML 2003) -> .XLS (abre no Excel Mac/Windows)
-    const db = getDB();
-    const { start, end } = getPeriod();
-    const statusMode = document.getElementById("dre_status_mode")?.value || "TODOS";
-    const months = monthsBetweenInclusive(start, end);
-
-    const statusOk = (n) => {
-      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
-      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
-      return true;
-    };
-
-    const rows = db.notas
-      .filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end)
-      .filter(statusOk);
-
-    const header = ["Tipo (C/D)","Competência","Categoria","Fornecedor","Valor","Documento","Nota","Status"];
-    const data = [header];
-
-    rows.forEach(n=>{
-      data.push([
-        n.tipo==="RECEITA" ? "C" : "D",
-        n.competencia,
-        n.categoria,
-        n.fornecedor,
-        Number(n.valor||0),
-        n.doc || "",
-        n.numero || "",
-        n.status
-      ]);
-    });
-
-    const receitaManualMensal = getReceitaManualPerMonth();
-    if(receitaManualMensal > 0){
-      months.forEach(m=>{
-        data.push(["C", m, "RECEITA_OPERACIONAL", "AJUSTE_RECEITA_MANUAL", Number(receitaManualMensal), "", "", "MANUAL"]);
-      });
-    }
-
-    const xml = buildSpreadsheetML("CONTABIL", data);
-    downloadFile(xml, `dre_contabil_${start}_a_${end}.xls`, "application/vnd.ms-excel;charset=utf-8");
-    toast("Exportado", "Arquivo Excel (.xls) gerado e baixado.");
   }
 
   function buildSpreadsheetML(sheetName, aoa){
@@ -759,7 +510,7 @@ const App = (() => {
   function buildDocsIndex(db){
     // index[tipoLabel][grupo][ym] = array of notas
     const index = { "Despesas": {}, "Receitas": {} };
-    db.notas.forEach(n=>{
+    db.forEach(n=>{
       const tipoLabel = (n.tipo==="DESPESA") ? "Despesas" : "Receitas";
       const grupo = grupoFromNota(n);
       const ym = n.competencia || ymToday();
@@ -770,8 +521,8 @@ const App = (() => {
     return index;
   }
 
-  function renderDocs(){
-    const db = getDB();
+  async function renderDocs(){
+    const db = await getDB();
     const index = buildDocsIndex(db);
 
     // Build tree UI
@@ -874,15 +625,15 @@ const App = (() => {
     };
 
     // initial list render
-    renderDocsList();
+    renderDocsList().then();
   }
 
   function cssId(s){
     return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"_");
   }
 
-  function renderDocsList(){
-    const db = getDB();
+  async function renderDocsList(){
+    const db = await getDB();
     const tbody = document.getElementById("docsTbody");
     const title = document.getElementById("docsTitle");
     const sub = document.getElementById("docsSub");
@@ -897,7 +648,7 @@ const App = (() => {
     title.textContent = `${docsState.tipo} → ${docsState.grupo} → ${docsState.ym}`;
     sub.textContent = "Mostrando todos os documentos dessa pasta.";
 
-    let rows = db.notas.filter(n=>{
+    let rows = db.filter(n=>{
       const tipoLabel = (n.tipo==="DESPESA") ? "Despesas" : "Receitas";
       if(tipoLabel !== docsState.tipo) return false;
       if(grupoFromNota(n) !== docsState.grupo) return false;
@@ -935,27 +686,74 @@ const App = (() => {
     }).join("");
   }
 
-  function renderAll(){
-    // persist top filters to localStorage for convenience
-    const db = getDB();
+  async function renderAll(){
+    // Obter período dos filtros
     const { start, end } = getPeriod();
-    db._ui = db._ui || {};
-    db._ui.periodStart = start;
-    db._ui.periodEnd = end;
-    db._ui.receitaManualMensal = document.getElementById("receita_manual").value || "";
-    setDB(db);
 
-    if(state.view==="cadastro") renderCadastro();
-    if(state.view==="notas") renderNotas();
-    if(state.view==="dre") renderDRE();
-    if(state.view==="documentos") renderDocs();
+    if(state.view==="cadastro") await renderCadastro();
+    if(state.view==="notas") await renderNotas();
+    if(state.view==="dre") await renderDRE();
+    if(state.view==="documentos") await renderDocs();
   }
 
-  function initTopFilters(){
-    const db = getDB();
-    const pStart = db._ui?.periodStart || ymToday();
-    const pEnd = db._ui?.periodEnd || ymToday();
-    const recMan = db._ui?.receitaManualMensal || "";
+  async function renderCadastro(){
+    const db = await getDB();
+    if(!document.getElementById("f_competencia").value) document.getElementById("f_competencia").value = ymToday();
+    if(!document.getElementById("f_venc").value) document.getElementById("f_venc").value = nowISODate();
+    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
+
+    const ym = document.getElementById("cad_comp_filter").value || ymToday();
+    const stFilter = document.getElementById("cad_status_filter").value || "TODOS";
+
+    const items = db.filter(n => n.competencia === ym && (stFilter==="TODOS" ? true : n.status===stFilter));
+    let rec = 0, desp = 0, pend = 0, pagas = 0;
+    items.forEach(n=>{
+      if(n.tipo==="RECEITA") rec += n.valor; else desp += n.valor;
+      if(n.status==="PENDENTE") pend++;
+      if(n.status==="PAGA") pagas++;
+    });
+
+    const kpis = [
+      { label:"Receitas (mês)", value: moneyBRL(rec), chip:`${items.filter(n=>n.tipo==="RECEITA").length} itens` },
+      { label:"Despesas (mês)", value: moneyBRL(desp), chip:`${items.filter(n=>n.tipo==="DESPESA").length} itens` },
+      { label:"Resultado (mês)", value: moneyBRL(rec-desp), chip:(rec-desp)>=0 ? "positivo" : "negativo", tone:(rec-desp)>=0 ? "ok":"bad" },
+      { label:"Pagas / Pendentes", value: `${pagas} / ${pend}`, chip:`Total ${items.length}`, tone: pend>0 ? "warn":"ok" },
+    ];
+    document.getElementById("kpis-cadastro").innerHTML = kpis.map(k=>`
+      <div class="kpi">
+        <div class="t">
+          <div class="l">${k.label}</div>
+          <div class="chip ${k.tone||""}">${k.chip||""}</div>
+        </div>
+        <div class="n">${k.value}</div>
+      </div>
+    `).join("");
+
+    const last = [...db].slice(0,6);
+    if(last.length===0){
+      document.getElementById("lastList").innerHTML = `Ainda não há lançamentos. Cadastre uma <b>receita</b> e uma <b>despesa</b> para validar o DRE.`;
+    }else{
+      document.getElementById("lastList").innerHTML = last.map(n=>`
+        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div>
+            <div style="font-weight:650">${esc(n.fornecedor)}</div>
+            <div class="mini">Comp: ${esc(n.competencia)} • Venc: ${esc(n.vencimento)} • ${esc(DRE_LABELS[n.categoria]||n.categoria)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
+            <div class="mini">${badgeForStatus(n.status)}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  async function initTopFilters(){
+    const db = await getDB();
+    // Valores padrão para filtros
+    const pStart = ymToday();
+    const pEnd = ymToday();
+    const recMan = "";
 
     document.getElementById("filtro_inicio").value = pStart;
     document.getElementById("filtro_fim").value = pEnd;
@@ -966,18 +764,421 @@ const App = (() => {
     document.getElementById("dre_mode").value = "PERIODO";
   }
 
-  function init(){
-    clearForm();
-    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
-    initTopFilters();
-    renderAll();
+  async function renderNotas(){
+    const db = await getDB();
+    const q = (document.getElementById("q").value||"").toLowerCase().trim();
+    const tipo = document.getElementById("notas_tipo").value || "TODOS";
+    const status = document.getElementById("notas_status").value || "TODOS";
+    const compExact = document.getElementById("notas_comp").value || "";
+
+    const { start, end } = getPeriod();
+
+    let rows = [...db];
+
+    // Period filter always applies (market expectation)
+    rows = rows.filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end);
+
+    // optional exact month filter
+    if(compExact) rows = rows.filter(n => n.competencia===compExact);
+
+    if(tipo!=="TODOS") rows = rows.filter(n => n.tipo===tipo);
+    if(status!=="TODOS") rows = rows.filter(n => n.status===status);
+
+    if(q){
+      rows = rows.filter(n =>
+        (n.fornecedor||"").toLowerCase().includes(q) ||
+        (n.numero||"").toLowerCase().includes(q) ||
+        (n.descricao||"").toLowerCase().includes(q) ||
+        (n.doc||"").toLowerCase().includes(q)
+      );
+    }
+
+    const tbody = document.getElementById("tbodyNotas");
+    if(rows.length===0){
+      tbody.innerHTML = `<tr><td colspan="8" class="muted">Nenhum lançamento encontrado para os filtros / período.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(n=>{
+      const typeLabel = n.tipo==="RECEITA" ? "Receita" : "Despesa";
+      const typeBadge = n.tipo==="RECEITA"
+        ? `<span class="badge ok"><span class="dot"></span>${typeLabel}</span>`
+        : `<span class="badge bad"><span class="dot"></span>${typeLabel}</span>`;
+
+      return `<tr>
+        <td>
+          <div style="font-weight:650">${esc(n.fornecedor)}</div>
+          <div class="mini">${esc(n.doc||"")} ${n.numero?("• "+esc(n.numero)):""}</div>
+        </td>
+        <td>${esc(n.competencia)}</td>
+        <td>
+          ${esc(n.vencimento)}
+          <div class="mini">${n.pagoEm ? ("Pago em "+esc(n.pagoEm)) : ""}</div>
+        </td>
+        <td>${typeBadge}</td>
+        <td>${esc(DRE_LABELS[n.categoria]||n.categoria)}</td>
+        <td><b>${moneyBRL(n.valor)}</b></td>
+        <td>
+          <select class="statusSel" onchange="App.updateStatus('${n.id}', this.value)">
+            ${statusOptions(n.status)}
+          </select>
+          <div class="mini">${badgeForStatus(n.status)}</div>
+        </td>
+        <td>
+          <div class="tdActions">
+            <button class="btn small" onclick="App.openModal('${n.id}')">🔎 Detalhar</button>
+            <button class="btn small primary" onclick="App.markPaid('${n.id}')">✅ Pagar</button>
+            <button class="btn small" onclick="App.deleteNota('${n.id}')">🗑️ Excluir</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
   }
 
-  return {
+  async function renderDRE(){
+    const db = await getDB();
+    const { start, end } = getPeriod();
+    const statusMode = document.getElementById("dre_status_mode").value || "TODOS";
+    const mode = document.getElementById("dre_mode").value || "PERIODO";
+
+    const receitaManualMensal = getReceitaManualPerMonth();
+    const months = monthsBetweenInclusive(start, end);
+    const receitaManualTotal = receitaManualMensal * months.length;
+
+    const calc = computePeriod(db, start, end, statusMode);
+
+    const receitasAdj = calc.receitas + receitaManualTotal;
+    const resultadoAdj = receitasAdj - calc.despesas;
+
+    const kpis = [
+      { label:"Receitas (lançadas)", value: moneyBRL(calc.receitas), chip:`${calc.rows.filter(n=>n.tipo==="RECEITA").length} itens` },
+      { label:"Receita manual (período)", value: moneyBRL(receitaManualTotal), chip:`${months.length} mês(es)` },
+      { label:"Despesas (período)", value: moneyBRL(calc.despesas), chip:`${calc.rows.filter(n=>n.tipo==="DESPESA").length} itens`, tone:"warn" },
+      { label:"Resultado (período)", value: moneyBRL(resultadoAdj), chip: resultadoAdj>=0 ? "positivo":"negativo", tone: resultadoAdj>=0 ? "ok":"bad" },
+    ];
+
+    document.getElementById("kpis-dre").innerHTML = kpis.map(k=>`
+      <div class="kpi">
+        <div class="t">
+          <div class="l">${k.label}</div>
+          <div class="chip ${k.tone||""}">${k.chip||""}</div>
+        </div>
+        <div class="n">${k.value}</div>
+      </div>
+    `).join("");
+
+    // categories
+    const cats = Object.entries(calc.byCat).sort((a,b)=> Math.abs(b[1].total) - Math.abs(a[1].total));
+    if(cats.length===0){
+      document.getElementById("dreCats").innerHTML = "Sem lançamentos no período.";
+    }else{
+      document.getElementById("dreCats").innerHTML = cats.map(([cat,agg])=>{
+        const rec = agg.receitas||0, desp = agg.despesas||0;
+        const res = rec - desp;
+        const tone = res>=0 ? "ok" : "bad";
+        return `<div style="padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:center">
+            <div>
+              <div style="font-weight:700">${esc(DRE_LABELS[cat]||cat)}</div>
+              <div class="mini">${agg.count} itens • Receitas ${moneyBRL(rec)} • Despesas ${moneyBRL(desp)}</div>
+            </div>
+            <div class="badge ${tone}"><span class="dot"></span>${moneyBRL(res)}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // top launches
+    const top = [...calc.rows].sort((a,b)=> b.valor - a.valor).slice(0,10);
+    document.getElementById("dreTop").innerHTML = top.length===0
+      ? "—"
+      : top.map(n=>`
+        <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background: rgba(255,255,255,.03); margin-bottom:10px">
+          <div>
+            <div style="font-weight:650">${esc(n.fornecedor)}</div>
+            <div class="mini">${n.tipo==="RECEITA"?"Receita":"Despesa"} • ${esc(DRE_LABELS[n.categoria]||n.categoria)} • ${badgeForStatus(n.status)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:750">${moneyBRL(n.valor)}</div>
+            <div class="mini"><button class="btn small" onclick="App.openModal('${n.id}')">Detalhar</button></div>
+          </div>
+        </div>
+      `).join("");
+
+    drawDREChart(receitasAdj, calc.despesas, resultadoAdj);
+  }
+
+  function markPaidFromModal(){
+    if(!state.selectedId) return;
+    markPaid(state.selectedId);
+    openModal(state.selectedId);
+  }
+
+  async function duplicateFromModal(){
+    if(!state.selectedId) return;
+    
+    // Somente Supabase
+    try {
+      const db = await getDB();
+      const n = db.find(x=>x.id===state.selectedId);
+      if(!n) return;
+      
+      const copy = JSON.parse(JSON.stringify(n));
+      copy.id = uid();
+      copy.status = "PENDENTE";
+      copy.pagoEm = null;
+      copy.criadoEm = new Date().toISOString();
+      
+      const notaData = {
+        id: copy.id,
+        tipo: copy.tipo,
+        status: copy.status,
+        categoria: copy.categoria,
+        centro_custo: copy.centroCusto || null,
+        competencia: copy.competencia + '-01', // YYYY-MM para YYYY-MM-01
+        valor: copy.valor,
+        descricao: copy.descricao || `${copy.fornecedor} - ${copy.doc || ''}`,
+        pago_em: copy.pagoEm || null,
+        attachment_data: copy.attachment || null
+      };
+      
+      await window.SupabaseDB.saveNota(notaData);
+      toast("Duplicado", "Criamos uma cópia como Pendente no Supabase.");
+      
+      await renderAll();
+    } catch (error) {
+      console.error('Erro ao duplicar no Supabase:', error);
+      toast("Erro", "Falha ao duplicar no Supabase.");
+    }
+  }
+
+  async function exportCNAB(){
+    // Exporta Excel offline (SpreadsheetML 2003) -> .XLS (abre no Excel Mac/Windows)
+    const db = await getDB();
+    const { start, end } = getPeriod();
+    const statusMode = document.getElementById("dre_status_mode")?.value || "TODOS";
+    const months = monthsBetweenInclusive(start, end);
+
+    const statusOk = (n) => {
+      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
+      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
+      return true;
+    };
+
+    const rows = db
+      .filter(n => (n.competencia||"") >= start && (n.competencia||"") <= end)
+      .filter(statusOk);
+
+    const header = ["Tipo (C/D)","Competência","Categoria","Fornecedor","Valor","Documento","Nota","Status"];
+    const data = [header];
+
+    rows.forEach(n=>{
+      data.push([
+        n.tipo==="RECEITA" ? "C" : "D",
+        n.competencia,
+        n.categoria,
+        n.fornecedor,
+        Number(n.valor||0),
+        n.doc || "",
+        n.numero || "",
+        n.status
+      ]);
+    });
+
+    const receitaManualMensal = getReceitaManualPerMonth();
+    if(receitaManualMensal > 0){
+      months.forEach(m=>{
+        data.push(["C", m, "RECEITA_OPERACIONAL", "AJUSTE_RECEITA_MANUAL", Number(receitaManualMensal), "", "", "MANUAL"]);
+      });
+    }
+
+    const xml = buildSpreadsheetML("CONTABIL", data);
+    downloadFile(xml, `dre_contabil_${start}_a_${end}.xls`, "application/vnd.ms-excel;charset=utf-8");
+    toast("Exportado", "Arquivo Excel (.xls) gerado e baixado.");
+  }
+
+  function buildSpreadsheetML(sheetName, aoa){
+    const esc = (s)=> String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+    const isNum = (v)=> typeof v==="number" && isFinite(v);
+
+    let rowsXml = "";
+    aoa.forEach((row, ri)=>{
+      let cells = "";
+      row.forEach((cell, ci)=>{
+        const type = isNum(cell) ? "Number" : "String";
+        const value = isNum(cell) ? String(cell) : esc(cell);
+        // Header style on first row
+        const style = (ri===0) ? ' ss:StyleID="sHeader"' : "";
+        cells += `<Cell${style}><Data ss:Type="${type}">${value}</Data></Cell>`;
+      });
+      rowsXml += `<Row>${cells}</Row>`;
+    });
+
+    return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="sHeader">
+      <Font ss:Bold="1"/>
+      <Interior ss:Color="#D9E1F2" ss:Pattern="Solid"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="${esc(sheetName)}">
+    <Table>
+      ${rowsXml}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+  }
+
+  function downloadFile(content, filename, mime){
+    const blob = new Blob([content], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 250);
+  }
+
+  function computeMonth(db, ym, statusMode="TODOS"){
+    const statusOk = (n) => {
+      if(statusMode==="APENAS_PAGAS") return n.status==="PAGA";
+      if(statusMode==="PAGAS_E_LANCADAS") return (n.status==="PAGA" || n.status==="LANCADA");
+      return true;
+    };
+    const rows = db.filter(n => (n.competencia||"")===ym).filter(statusOk);
+
+    let receitas = 0, despesas = 0;
+    const byCat = {};
+    rows.forEach(n=>{
+      const isRec = n.tipo==="RECEITA";
+      if(isRec) receitas += n.valor; else despesas += n.valor;
+      const cat = n.categoria || "OUTROS";
+      if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
+      if(isRec) byCat[cat].receitas += n.valor; else byCat[cat].despesas += n.valor;
+      byCat[cat].count += 1;
+    });
+    Object.keys(byCat).forEach(cat=>{
+      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
+    });
+
+    return { ym, rows, receitas, despesas, resultado: receitas - despesas, byCat };
+  }
+
+  function computePeriod(db, startYm, endYm, statusMode="TODOS"){
+    const months = monthsBetweenInclusive(startYm, endYm);
+    const byCat = {};
+    let receitas = 0, despesas = 0;
+    let rows = [];
+
+    months.forEach(m=>{
+      const r = computeMonth(db, m, statusMode);
+      rows = rows.concat(r.rows);
+      receitas += r.receitas;
+      despesas += r.despesas;
+      for(const [cat,agg] of Object.entries(r.byCat)){
+        if(!byCat[cat]) byCat[cat] = { receitas:0, despesas:0, total:0, count:0 };
+        byCat[cat].receitas += agg.receitas||0;
+        byCat[cat].despesas += agg.despesas||0;
+        byCat[cat].count += agg.count||0;
+      }
+    });
+
+    for(const cat of Object.keys(byCat)){
+      byCat[cat].total = (byCat[cat].receitas||0) - (byCat[cat].despesas||0);
+    }
+
+    return { months, rows, receitas, despesas, resultado: receitas - despesas, byCat };
+  }
+
+  function drawDREChart(receitas, despesas, resultado){
+    const c = document.getElementById("dreChart");
+    const ctx = c.getContext("2d");
+    const w = c.width, h = c.height;
+    ctx.clearRect(0,0,w,h);
+
+    const pad = 26;
+    const baseY = h - pad;
+    const leftX = pad;
+    const rightX = w - pad;
+
+    ctx.strokeStyle = "rgba(255,255,255,.12)";
+    ctx.lineWidth = 1;
+    for(let i=0;i<5;i++){
+      const y = pad + i*((h-2*pad)/4);
+      ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke();
+    }
+
+    const maxV = Math.max(receitas, despesas, Math.abs(resultado), 1);
+    const bars = [
+      { label:"Receitas", value: receitas, color:"rgba(34,197,94,.75)" },
+      { label:"Despesas", value: despesas, color:"rgba(245,158,11,.70)" },
+      { label:"Resultado", value: resultado, color: resultado>=0 ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.70)" },
+    ];
+
+    const bw = (rightX-leftX) / (bars.length*1.8);
+    const gap = bw*0.8;
+
+    bars.forEach((b, i)=>{
+      const x = leftX + i*(bw+gap) + 60;
+      const val = b.value;
+      const bh = (Math.abs(val) / maxV) * (h - 2*pad);
+      const y = val>=0 ? (baseY - bh) : baseY;
+
+      ctx.fillStyle = b.color;
+      ctx.fillRect(x, y, bw, bh);
+
+      ctx.fillStyle = "rgba(232,238,252,.92)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      ctx.fillText(b.label, x, h-8);
+
+      ctx.fillStyle = "rgba(155,176,211,.95)";
+      ctx.font = "12px ui-sans-serif, system-ui";
+      ctx.fillText(shortMoney(val), x, y-8);
+    });
+
+    function shortMoney(v){
+      const abs = Math.abs(v);
+      let s = "";
+      if(abs>=1000000) s = (abs/1000000).toFixed(2).replace(".",",") + "M";
+      else if(abs>=1000) s = (abs/1000).toFixed(1).replace(".",",") + "k";
+      else s = abs.toFixed(0);
+      return (v<0? "-":"") + "R$ " + s;
+    }
+  }
+
+  async function init(){
+    // Inicializar Supabase - obrigatório
+    if (window.SupabaseDB && window.SupabaseDB.init()) {
+      toast("Conectado", "Usando Supabase como backend");
+    } else {
+      throw new Error('Supabase não disponível. Configure suas credenciais.');
+    }
+    
+    clearForm();
+    if(!document.getElementById("cad_comp_filter").value) document.getElementById("cad_comp_filter").value = ymToday();
+    await initTopFilters();
+    await renderAll();
+  }
+
+  const appObject = {
     go,
+    init,
     addNota,
     clearForm,
     renderAll,
+    renderCadastro,
     renderNotas,
     renderDRE,
     renderDocs,
@@ -990,12 +1191,43 @@ const App = (() => {
     duplicateFromModal,
     exportCNAB
   };
+  
+  // Disponibilizar globalmente imediatamente
+  window.App = appObject;
+  return appObject;
+  
+  // Fallback para onclicks que executam antes do carregamento
+  window.addEventListener("click", function(e) {
+    const target = e.target;
+    if (target.tagName === 'BUTTON' && target.onclick) {
+      const onclickCode = target.getAttribute('onclick');
+      if (onclickCode && onclickCode.includes('App.') && !window.App) {
+        console.warn('App ainda não carregado, aguardando...');
+        setTimeout(() => {
+          if (window.App && target.onclick) {
+            target.click();
+          }
+        }, 100);
+      }
+    }
+  }, true);
+  
+  return appObject;
 })();
 
-window.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".nav button[data-view]").forEach(btn => {
-    btn.addEventListener("click", () => App.go(btn.getAttribute("data-view")));
-  });
-  window.App = App;
-  App.go("dre");
-});
+// Setup simples direto no final do script
+setTimeout(() => {
+  if (window.App) {
+    // Configurar navegação
+    document.querySelectorAll(".nav button[data-view]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        App.go(btn.getAttribute("data-view"));
+      });
+    });
+    
+    // Inicializar app
+    App.init().then(() => {
+      App.go("dre");
+    });
+  }
+}, 100);
