@@ -16,7 +16,7 @@ function initSupabase() {
         // Usar createClient do window (do CDN)
         if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase inicializado:', supabaseClient);
+            console.log('✅ Supabase inicializado');
             // Disponibilizar globalmente para testes
             window.supabaseClient = supabaseClient;
             return true;
