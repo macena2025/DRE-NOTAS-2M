@@ -217,6 +217,7 @@ const App = (() => {
         id: uid(),
         tipo: nota.tipo,
         status: nota.status,
+        fornecedor: nota.fornecedor,
         categoria: nota.categoria,
         centro_custo: nota.centroCusto || null,
         competencia: nota.competencia + '-01',
@@ -256,45 +257,6 @@ const App = (() => {
       toast("Erro no upload", `Falha: ${error.message || 'Erro desconhecido'}`);
       return;
     }
-
-    // // Somente Supabase
-    // try {
-    //   console.log('🔍 Dados da nota antes de enviar:', nota);
-    //   console.log('🔍 nota.competencia original:', nota.competencia);
-      
-    //   // Verificar se já tem -01 no valor
-    //   const competencia = nota.competencia.endsWith('-01') ? nota.competencia : nota.competencia + '-01';
-      
-    //   const notaData = {
-    //     id: nota.id,
-    //     tipo: nota.tipo,
-    //     status: nota.status,
-    //     categoria: nota.categoria,
-    //     centro_custo: nota.centroCusto || null,
-    //     competencia: competencia,
-    //     valor: nota.valor,
-    //     descricao: nota.descricao || `${nota.fornecedor} - ${nota.doc || ''}`,
-    //     pago_em: nota.pagoEm || null,
-    //     attachment_data: attachment || null
-    //   };
-      
-    //   console.log('🔍 Dados da nota antes de enviar:', nota);
-    //   console.log('🔍 nota.competencia original:', nota.competencia);
-    //   console.log('🔍 competencia final:', competencia);
-      
-    //   console.log('🔍 notaData sendo enviada:', notaData);
-      
-    //   console.log('🔍 Enviando para Supabase:', notaData);
-    //   console.log('🔍 notaData.competencia tipo:', typeof notaData.competencia, notaData.competencia);
-      
-    //   await window.SupabaseDB.saveNota(notaData);
-    //   toast("Salvo", "Lançamento adicionado com sucesso no Supabase.");
-    // } catch (error) {
-    //   console.error('Erro ao salvar no Supabase:', error);
-    //   console.error('Stack trace:', error.stack);
-    //   toast("Erro", `Falha: ${error.message || 'Erro de conexão'}`);
-    //   return;
-    // }
     
     clearForm();
     renderAll();
@@ -329,7 +291,8 @@ const App = (() => {
       const anexoData = {
         lancamento_id: lancamentoId,
         arquivo_nome: file.name,
-        arquivo_path: supabaseFile.path
+        arquivo_path: supabaseFile.path,
+        arquivo_url: supabaseFile.publicUrl,
       };
       
       console.log('🔍 Salvando anexo:', anexoData);
@@ -407,18 +370,19 @@ const App = (() => {
     document.getElementById("m_kv").innerHTML = kv.join("");
 
     const p = document.getElementById("m_preview");
-    if(n.attachment && n.attachment.dataUrl){
+    console.log(n)
+    if(n.attachment && n.attachment.publicUrl){
       const isImg = (n.attachment.type||"").startsWith("image/");
       const isPdf = (n.attachment.type||"").includes("pdf") || (n.attachment.name||"").toLowerCase().endsWith(".pdf");
       let html = `<div class="muted" style="font-size:12px; margin-bottom:10px">
         Anexo: <b>${esc(n.attachment.name)}</b> (${formatBytes(n.attachment.size)})
       </div>`;
-      html += `<a class="btn small" download="${escAttr(n.attachment.name)}" href="${n.attachment.dataUrl}">⬇️ Baixar anexo</a>`;
+      html += `<a class="btn small" download="${escAttr(n.attachment.name)}" href="${n.attachment.publicUrl}">⬇️ Baixar anexo</a>`;
       html += `<div class="sep"></div>`;
       if(isImg){
-        html += `<img src="${n.attachment.dataUrl}" alt="Anexo"/>`;
+        html += `<img src="${n.attachment.publicUrl}" alt="Anexo"/>`;
       }else if(isPdf){
-        html += `<iframe title="pdf" src="${n.attachment.dataUrl}" style="width:100%; height:340px; border:0; border-radius:12px"></iframe>`;
+        html += `<iframe title="pdf" src="${n.attachment.publicUrl}" style="width:100%; height:340px; border:0; border-radius:12px"></iframe>`;
       }else{
         html += `<div class="muted" style="font-size:13px">Pré-visualização não disponível. Use "Baixar anexo".</div>`;
       }

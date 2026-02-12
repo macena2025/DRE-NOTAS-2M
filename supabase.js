@@ -73,6 +73,7 @@ async function saveNotaToSupabase(notaData) {
     const lancamentoData = {
         id: notaData.id,
         tipo: notaData.tipo,
+        fornecedor: notaData.fornecedor,
         categoria: notaData.categoria,
         subcategoria: notaData.centro_custo || null,
         descricao: notaData.descricao || null,
@@ -111,7 +112,8 @@ async function saveAnexoToSupabase(lancamentoId, attachmentData) {
     const anexoData = {
         lancamento_id: lancamentoId,
         arquivo_nome: attachmentData.name,
-        arquivo_path: attachmentData.path || attachmentData.publicUrl
+        arquivo_path: attachmentData.path,
+        arquivo_url: attachmentData.publicUrl,
     };
     
     const { error } = await supabaseClient
@@ -190,7 +192,8 @@ async function getNotasFromSupabase(filters = {}) {
             anexos (
                 id,
                 arquivo_nome,
-                arquivo_path
+                arquivo_path,
+                arquivo_url
             )
         `)
         .order('created_at', { ascending: false });
@@ -236,16 +239,14 @@ function adaptLancamentoToNota(lancamento, attachmentOverride = null) {
     const attachment = attachmentOverride || (lancamento.anexos && lancamento.anexos[0] ? {
         name: lancamento.anexos[0].arquivo_nome,
         path: lancamento.anexos[0].arquivo_path,
-        publicUrl: lancamento.anexos[0].arquivo_path?.startsWith('http') ? 
-                   lancamento.anexos[0].arquivo_path : 
-                   null
+        publicUrl: lancamento.anexos[0].arquivo_url,
     } : null);
     
     return {
         id: lancamento.id,
         tipo: lancamento.tipo,
         status: lancamento.status,
-        fornecedor: 'Fornecedor não especificado', // Sua tabela não tem este campo
+        fornecedor: lancamento.fornecedor,
         doc: null,
         categoria: lancamento.categoria,
         centroCusto: lancamento.subcategoria,
